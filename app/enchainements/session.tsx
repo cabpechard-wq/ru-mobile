@@ -1,8 +1,10 @@
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "../../src/components/PageHeader";
+import { ReorderableList } from "../../src/components/ReorderableList";
 import {
   displayNom,
   formatDateFr,
@@ -22,13 +24,16 @@ export default function EnchainementsSessionScreen() {
   const [order, setOrder] = useState<Decision[]>(initial);
   const [checked, setChecked] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
-  const move = (index: number, dir: -1 | 1) => {
+  useEffect(() => {
+    setOrder(initial);
+    setChecked(false);
+    setRevealed(false);
+  }, [initial]);
+
+  const reorder = (next: Decision[]) => {
     if (revealed) return;
-    const target = index + dir;
-    if (target < 0 || target >= order.length) return;
-    const next = [...order];
-    [next[index], next[target]] = [next[target], next[index]];
     setOrder(next);
     setChecked(false);
   };
@@ -59,111 +64,130 @@ export default function EnchainementsSessionScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader
-        trail={[SECTION.enchainements, "Exercice"]}
-        right={
-          <Text style={styles.summary} numberOfLines={1}>
-            Ordre chronologique ?
-          </Text>
-        }
-      />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {checked ? (
-          <View style={[styles.scoreBanner, revealed && styles.scoreBannerRevealed]}>
-            <Text style={styles.scoreText}>
-              {revealed
-                ? `${correctOrder.length} / ${correctOrder.length} — solution affichée`
-                : `${correctCount} / ${correctOrder.length} bien placées`}
+    <GestureHandlerRootView style={styles.flex}>
+      <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+        <PageHeader
+          trail={[SECTION.enchainements, "Exercice"]}
+          right={
+            <Text style={styles.summary} numberOfLines={1}>
+              Ordre chronologique ?
             </Text>
-          </View>
-        ) : null}
+          }
+        />
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          scrollEnabled={!revealed && !dragging}
+        >
+          <Text style={styles.hint}>
+            Maintenez la poignée ⠿ puis glissez pour réordonner
+            {revealed ? " (verrouillé)." : "."}
+          </Text>
 
-        <View style={styles.list}>
-          {order.map((d, index) => {
-            const showDetails = revealed || (checked && d.id === correctOrder[index]?.id);
-            const isWrong = checked && !revealed && d.id !== correctOrder[index]?.id;
-            return (
-              <View
-                key={d.id}
-                style={[
-                  styles.card,
-                  showDetails && styles.cardCorrect,
-                  isWrong && styles.cardWrong,
-                ]}
-              >
-                <View style={styles.cardBody}>
-                  <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardNom}>
-                      {displayNom(d.nom, showDetails)}
-                    </Text>
-                    {showDetails ? (
-                      <Text style={styles.cardDate}>{formatDateFr(d.date)}</Text>
+          {checked ? (
+            <View
+              style={[
+                styles.scoreBanner,
+                revealed && styles.scoreBannerRevealed,
+              ]}
+            >
+              <Text style={styles.scoreText}>
+                {revealed
+                  ? `${correctOrder.length} / ${correctOrder.length} — solution affichée`
+                  : `${correctCount} / ${correctOrder.length} bien placées`}
+              </Text>
+            </View>
+          ) : null}
+
+          <ReorderableList
+            data={order}
+            keyExtractor={(d) => d.id}
+            onReorder={reorder}
+            enabled={!revealed}
+            onDragStateChange={setDragging}
+            renderItem={({ item: d, index, dragHandle }) => {
+              const showDetails =
+                revealed || (checked && d.id === correctOrder[index]?.id);
+              const isWrong =
+                checked && !revealed && d.id !== correctOrder[index]?.id;
+              return (
+                <View
+                  style={[
+                    styles.card,
+                    showDetails && styles.cardCorrect,
+                    isWrong && styles.cardWrong,
+                  ]}
+                >
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardTitleRow}>
+                      <Text style={styles.cardNom}>
+                        {displayNom(d.nom, showDetails)}
+                      </Text>
+                      {showDetails ? (
+                        <Text style={styles.cardDate}>
+                          {formatDateFr(d.date)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {d.objet ? (
+                      <Text style={styles.cardObjet}>{d.objet}</Text>
+                    ) : null}
+                    {revealed ||
+                    (checked && d.id === correctOrder[index]?.id) ? (
+                      <Pressable
+                        onPress={() =>
+                          router.push(`/arrets/${d.slugFiche || d.id}`)
+                        }
+                        style={styles.ficheLink}
+                      >
+                        <Text style={styles.ficheLinkText}>
+                          Fiche d'arrêt →
+                        </Text>
+                      </Pressable>
                     ) : null}
                   </View>
-                  {d.objet ? (
-                    <Text style={styles.cardObjet}>{d.objet}</Text>
-                  ) : null}
-                  {(revealed || (checked && d.id === correctOrder[index]?.id)) ? (
-                    <Pressable
-                      onPress={() =>
-                        router.push(`/arrets/${d.slugFiche || d.id}`)
-                      }
-                      style={styles.ficheLink}
-                    >
-                      <Text style={styles.ficheLinkText}>Fiche d'arrêt →</Text>
-                    </Pressable>
-                  ) : null}
+                  {dragHandle}
                 </View>
-                <View style={styles.moves}>
-                  <Pressable
-                    testID={`ench-up-${index}`}
-                    disabled={revealed || index === 0}
-                    onPress={() => move(index, -1)}
-                    style={[
-                      styles.moveBtn,
-                      (revealed || index === 0) && styles.moveBtnDisabled,
-                    ]}
-                  >
-                    <Text style={styles.moveText}>↑</Text>
-                  </Pressable>
-                  <Pressable
-                    testID={`ench-down-${index}`}
-                    disabled={revealed || index === order.length - 1}
-                    onPress={() => move(index, 1)}
-                    style={[
-                      styles.moveBtn,
-                      (revealed || index === order.length - 1) && styles.moveBtnDisabled,
-                    ]}
-                  >
-                    <Text style={styles.moveText}>↓</Text>
-                  </Pressable>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            }}
+          />
 
-        <View style={styles.actions}>
-          <Pressable style={styles.btnOutline} onPress={restart}>
-            <Text style={styles.btnOutlineText}>Recommencer</Text>
-          </Pressable>
-          <Pressable testID="ench-check" style={styles.btnOutline} onPress={check}>
-            <Text style={styles.btnOutlineText}>Vérifier</Text>
-          </Pressable>
-          <Pressable testID="ench-reveal" style={styles.btn} onPress={reveal}>
-            <Text style={styles.btnText}>Voir les dates</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.actions}>
+            <Pressable style={styles.btnOutline} onPress={restart}>
+              <Text style={styles.btnOutlineText}>Recommencer</Text>
+            </Pressable>
+            <Pressable
+              testID="ench-check"
+              style={styles.btnOutline}
+              onPress={check}
+            >
+              <Text style={styles.btnOutlineText}>Vérifier</Text>
+            </Pressable>
+            <Pressable testID="ench-reveal" style={styles.btn} onPress={reveal}>
+              <Text style={styles.btnText}>Voir les dates</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  summary: { color: colors.muted, fontSize: 12, fontWeight: "600", textAlign: "right" },
+  summary: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "right",
+  },
+  hint: {
+    color: colors.muted,
+    fontSize: 13,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
   scoreBanner: {
     backgroundColor: colors.accentSoft,
     borderRadius: colors.radius,
@@ -173,15 +197,16 @@ const styles = StyleSheet.create({
   },
   scoreBannerRevealed: { backgroundColor: colors.okSoft },
   scoreText: { fontWeight: "700", color: colors.ink },
-  list: { gap: 8 },
   card: {
     flexDirection: "row",
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: colors.radius,
     backgroundColor: colors.card,
-    padding: 12,
-    gap: 10,
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 4,
+    gap: 4,
     alignItems: "center",
   },
   cardCorrect: { backgroundColor: colors.okSoft, borderColor: colors.ok },
@@ -193,24 +218,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  cardNom: { fontWeight: "700", color: colors.ink, fontSize: 14, flexShrink: 1 },
+  cardNom: {
+    fontWeight: "700",
+    color: colors.ink,
+    fontSize: 14,
+    flexShrink: 1,
+  },
   cardDate: { color: colors.accent, fontWeight: "700", fontSize: 12 },
   cardObjet: { color: colors.muted, fontSize: 12, lineHeight: 17 },
   ficheLink: { marginTop: 6 },
   ficheLinkText: { color: colors.accent, fontWeight: "700", fontSize: 12 },
-  moves: { gap: 4 },
-  moveBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: colors.radius,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-  },
-  moveBtnDisabled: { opacity: 0.3 },
-  moveText: { fontSize: 15, color: colors.ink, fontWeight: "700" },
   actions: { flexDirection: "row", gap: 8, marginTop: 20 },
   btn: {
     flexGrow: 1,

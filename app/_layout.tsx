@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "../src/data/AuthContext";
 import { CardsProvider } from "../src/data/CardsProvider";
 import { ChronologieProvider } from "../src/data/ChronologieProvider";
@@ -17,37 +18,39 @@ import { colors } from "../src/theme/colors";
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <CardsProvider>
-        <FlipcardsDicoProvider>
-          <RelierProvider>
-            <RelierDicoProvider>
-              <EnchainementsProvider>
-                <ChronologieProvider>
-                  <DictionnaireProvider>
-                    <ManuelProvider>
-                      <StudyProvider>
-                        <RelierSessionProvider>
-                          <EnchainementsSessionProvider>
-                            <StatusBar style="dark" />
-                            <Stack
-                              screenOptions={{
-                                headerShown: false,
-                                contentStyle: { backgroundColor: colors.bg },
-                                animation: "slide_from_right",
-                              }}
-                            />
-                          </EnchainementsSessionProvider>
-                        </RelierSessionProvider>
-                      </StudyProvider>
-                    </ManuelProvider>
-                  </DictionnaireProvider>
-                </ChronologieProvider>
-              </EnchainementsProvider>
-            </RelierDicoProvider>
-          </RelierProvider>
-        </FlipcardsDicoProvider>
-      </CardsProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <CardsProvider>
+          <FlipcardsDicoProvider>
+            <RelierProvider>
+              <RelierDicoProvider>
+                <EnchainementsProvider>
+                  <ChronologieProvider>
+                    <DictionnaireProvider>
+                      <ManuelProvider>
+                        <StudyProvider>
+                          <RelierSessionProvider>
+                            <EnchainementsSessionProvider>
+                              <StatusBar style="dark" />
+                              <Stack
+                                screenOptions={{
+                                  headerShown: false,
+                                  contentStyle: { backgroundColor: colors.bg },
+                                  animation: "slide_from_right",
+                                }}
+                              />
+                            </EnchainementsSessionProvider>
+                          </RelierSessionProvider>
+                        </StudyProvider>
+                      </ManuelProvider>
+                    </DictionnaireProvider>
+                  </ChronologieProvider>
+                </EnchainementsProvider>
+              </RelierDicoProvider>
+            </RelierProvider>
+          </FlipcardsDicoProvider>
+        </CardsProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
