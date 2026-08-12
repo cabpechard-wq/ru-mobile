@@ -65,14 +65,15 @@ function HighlightSection({
   );
 }
 
-/** Corps de fiche (Faits / Enjeu / Solution / Perspective). */
+/** Corps de fiche (Faits / Enjeu / Solution / Perspective) — libellé gras inline. */
 function BodySection({ title, text }: { title: string; text?: string }) {
   if (!(text || "").trim()) return null;
+  const label = title.endsWith(".") ? title : `${title}.`;
   return (
-    <View style={styles.bodySection}>
-      <Text style={styles.bodyTitle}>{title}</Text>
-      <Text style={styles.bodyText}>{text}</Text>
-    </View>
+    <Text style={styles.bodyText}>
+      <Text style={styles.bodyLabel}>{label} </Text>
+      {text}
+    </Text>
   );
 }
 
@@ -272,13 +273,11 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    gap: 12,
   },
-  bodySection: { marginBottom: 14 },
-  bodyTitle: {
-    fontSize: 13,
+  bodyLabel: {
     fontWeight: "700",
     color: colors.ink,
-    marginBottom: 4,
   },
   bodyText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
