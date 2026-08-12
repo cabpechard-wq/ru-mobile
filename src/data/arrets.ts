@@ -18,6 +18,18 @@ export const EMPTY_ARRETS_FILTERS: ArretsFilters = {
   importance: null,
 };
 
+/** Au moins un critère actif (sinon on n'affiche pas les ~995 fiches). */
+export function hasActiveArretsFilters(filters: ArretsFilters): boolean {
+  return (
+    filters.query.trim().length > 0 ||
+    filters.theme != null ||
+    filters.juridiction != null ||
+    filters.formation != null ||
+    filters.year != null ||
+    filters.importance != null
+  );
+}
+
 export function uniqueSorted(values: (string | undefined | null)[]): string[] {
   return [...new Set(values.map((v) => (v || "").trim()).filter(Boolean))].sort(
     (a, b) => a.localeCompare(b, "fr")

@@ -17,6 +17,7 @@ import { PageHeader } from "../../src/components/PageHeader";
 import {
   EMPTY_ARRETS_FILTERS,
   filterDecisions,
+  hasActiveArretsFilters,
   themeLabel,
   uniqueSorted,
   type ArretsFilters,
@@ -70,6 +71,7 @@ export default function ArretsListScreen() {
   const [filters, setFilters] = useState<ArretsFilters>(EMPTY_ARRETS_FILTERS);
 
   const decisions = state.status === "ready" ? state.decisions : [];
+  const filtersActive = hasActiveArretsFilters(filters);
 
   const themes = useMemo(
     () =>
@@ -100,10 +102,10 @@ export default function ArretsListScreen() {
     return [1, 2, 3, 4].filter((n) => present.has(n));
   }, [decisions]);
 
-  const filtered = useMemo(
-    () => filterDecisions(decisions, filters),
-    [decisions, filters]
-  );
+  const filtered = useMemo(() => {
+    if (!filtersActive) return [];
+    return filterDecisions(decisions, filters);
+  }, [decisions, filters, filtersActive]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -132,10 +134,9 @@ export default function ArretsListScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Fiches d'arrêts</Text>
           <Text style={styles.sub}>
-            {filtered.length} résultat(s)
-            {filtered.length !== decisions.length
-              ? ` sur ${decisions.length}`
-              : ""}
+            {filtersActive
+              ? `${filtered.length} résultat(s) sur ${decisions.length}`
+              : `${decisions.length} fiche(s) — choisissez un filtre pour afficher la liste`}
             {state.source === "demo" ? " · démo" : ""}.
           </Text>
 
@@ -245,20 +246,29 @@ export default function ArretsListScreen() {
             ) : null}
           </View>
 
-          <View style={styles.list}>
-            {filtered.map((d) => (
-              <DecisionRow
-                key={d.id}
-                decision={d}
-                onPress={() =>
-                  router.push(`/arrets/${d.slugFiche || d.id}` as never)
-                }
-              />
-            ))}
-            {!filtered.length ? (
-              <Text style={styles.empty}>Aucune fiche ne correspond aux filtres.</Text>
-            ) : null}
-          </View>
+          {filtersActive ? (
+            <View style={styles.list}>
+              {filtered.map((d) => (
+                <DecisionRow
+                  key={d.id}
+                  decision={d}
+                  onPress={() =>
+                    router.push(`/arrets/${d.slugFiche || d.id}` as never)
+                  }
+                />
+              ))}
+              {!filtered.length ? (
+                <Text style={styles.empty}>
+                  Aucune fiche ne correspond aux filtres.
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <Text style={styles.empty}>
+              Sélectionnez un thème, une juridiction, une année… ou saisissez une
+              recherche pour afficher les fiches.
+            </Text>
+          )}
         </ScrollView>
       ) : null}
     </SafeAreaView>
