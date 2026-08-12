@@ -17,6 +17,20 @@ export function splitCoursLinks(cours: CoursLink[]): {
   return { chapitres, arrets };
 }
 
+/**
+ * `../manuel/dp-000/dp-200/dp-210/` → `dp-000-dp-200-dp-210`
+ * (même schéma d'id que manuel/chapters.json).
+ */
+export function chapterIdFromManuelPath(path: string): string | null {
+  const m = path.match(/\/manuel\/(.+?)\/?$/);
+  if (!m) return null;
+  const segments = m[1]
+    .split("/")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return segments.length ? segments.join("-") : null;
+}
+
 export type DictionnaireData = {
   kind: string;
   count: number;
