@@ -97,7 +97,7 @@ function AccountBar() {
     <View style={styles.accountBar}>
       <Text style={styles.accountText}>Mode démo</Text>
       <Pressable testID="login-link" onPress={() => router.push("/login")}>
-        <Text style={styles.accountAction}>Se connecter</Text>
+        <Text style={styles.accountAction}>Espace pédagogique</Text>
       </Pressable>
     </View>
   );
