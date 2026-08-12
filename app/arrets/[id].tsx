@@ -18,11 +18,23 @@ import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** Synthèse (Objet / Portée / Considérant) — mise en avant. */
-function HighlightSection({ title, text }: { title: string; text?: string }) {
+function HighlightSection({
+  title,
+  text,
+  tone = "brass",
+}: {
+  title: string;
+  text?: string;
+  /** Objet/Portée = brass ; Considérant = accent (teal). */
+  tone?: "brass" | "accent";
+}) {
   if (!(text || "").trim()) return null;
+  const isAccent = tone === "accent";
   return (
-    <View style={styles.highlight}>
-      <Text style={styles.highlightTitle}>{title}</Text>
+    <View style={[styles.highlight, isAccent && styles.highlightAccent]}>
+      <Text style={[styles.highlightTitle, isAccent && styles.highlightTitleAccent]}>
+        {title}
+      </Text>
       <Text style={styles.highlightText}>{text}</Text>
     </View>
   );
@@ -138,7 +150,11 @@ export default function ArretFicheScreen() {
 
         <HighlightSection title="Objet" text={decision.objet} />
         <HighlightSection title="Portée" text={decision.portee} />
-        <HighlightSection title="Considérant de principe" text={considerant} />
+        <HighlightSection
+          title="Considérant de principe"
+          text={considerant}
+          tone="accent"
+        />
 
         <View style={styles.bodyBlock}>
           <BodySection title="Faits" text={decision.faits} />
@@ -184,6 +200,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 10,
   },
+  highlightAccent: { borderLeftColor: colors.accent },
   highlightTitle: {
     fontSize: 11,
     fontWeight: "700",
@@ -192,6 +209,7 @@ const styles = StyleSheet.create({
     color: colors.brass,
     marginBottom: 6,
   },
+  highlightTitleAccent: { color: colors.accent },
   highlightText: {
     fontSize: 15,
     lineHeight: 22,
