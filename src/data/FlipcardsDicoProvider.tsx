@@ -50,23 +50,31 @@ export function FlipcardsDicoProvider({ children }: { children: React.ReactNode 
     })
       .then(async (res) => {
         if (res.status === 401) {
-          auth.logout();
+          await auth.logout();
           return;
         }
-        if (!res.ok) throw new Error(`Serveur indisponible (${res.status})`);
-        const json = (await res.json()) as FlipcardsData;
+        const text = await res.text();
+        const trimmed = (text || "").trim();
+        if (!res.ok) {
+          throw new Error(`Serveur indisponible (${res.status})`);
+        }
+        if (trimmed.startsWith("<")) {
+          throw new Error("Réponse HTML inattendue.");
+        }
+        const json = JSON.parse(trimmed) as FlipcardsData;
         setState({
           status: "ready",
           data: normalizeCardsData(json),
           source: "member",
         });
       })
-      .catch((err: unknown) => {
-        const raw = err instanceof Error ? err.message : "";
-        const message = /failed to fetch|network/i.test(raw)
-          ? "Impossible de joindre le serveur."
-          : raw || "Une erreur est survenue.";
-        setState({ status: "error", message });
+      .catch(() => {
+        // Contenu membre inaccessible → démo embarquée.
+        setState({
+          status: "ready",
+          data: normalizeCardsData(demoJson as FlipcardsData),
+          source: "demo",
+        });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.status]);
