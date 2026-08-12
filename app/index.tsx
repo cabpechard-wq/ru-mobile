@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../src/components/Accordion";
 import { Chip } from "../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../src/components/DataStatus";
+import { useAuth } from "../src/data/AuthContext";
 import { useCardsData } from "../src/data/CardsProvider";
 import { PAGE_TITLE } from "../src/data/config";
 import { type Card } from "../src/data/cards";
@@ -33,12 +34,14 @@ function HomeContent({
   allNotions,
   presentImportanceLevels,
   colorForLabel,
+  source,
 }: {
   allCards: Card[];
   allThemes: string[];
   allNotions: string[];
   presentImportanceLevels: number[];
   colorForLabel: (label: string, group: "theme" | "notion") => string;
+  source: "demo" | "member";
 }) {
   const router = useRouter();
   const { setSession } = useStudySession();
@@ -80,7 +83,8 @@ function HomeContent({
       <Text style={styles.title}>{PAGE_TITLE}</Text>
       <Text style={styles.sub}>
         1 thème (choix unique), notions et importance — comme sur le web.
-        Laissez vide pour tout le set ({allCards.length} cartes).
+        Laissez vide pour tout le set ({allCards.length} cartes
+        {source === "demo" ? " · démo" : ""}).
       </Text>
 
       <View style={styles.card}>
@@ -179,11 +183,39 @@ function starsLabel(level: number): string {
   return level ? "★".repeat(level) : "";
 }
 
+function AccountBar() {
+  const router = useRouter();
+  const auth = useAuth();
+
+  if (auth.status === "authenticated") {
+    return (
+      <View style={styles.accountBar}>
+        <Text style={styles.accountText} numberOfLines={1}>
+          Connecté · {auth.email}
+        </Text>
+        <Pressable testID="logout-link" onPress={() => auth.logout()}>
+          <Text style={styles.accountAction}>Déconnexion</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.accountBar}>
+      <Text style={styles.accountText}>Mode démo</Text>
+      <Pressable testID="login-link" onPress={() => router.push("/login")}>
+        <Text style={styles.accountAction}>Se connecter</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
   const cardsState = useCardsData();
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <AccountBar />
       {cardsState.status === "loading" ? <LoadingScreen /> : null}
       {cardsState.status === "error" ? (
         <ErrorScreen message={cardsState.message} onRetry={cardsState.reload} />
@@ -195,6 +227,7 @@ export default function HomeScreen() {
           allNotions={cardsState.data.allNotions}
           presentImportanceLevels={cardsState.data.presentImportanceLevels}
           colorForLabel={cardsState.data.colorForLabel}
+          source={cardsState.source}
         />
       ) : null}
     </SafeAreaView>
@@ -203,6 +236,16 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+  accountBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  accountText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
+  accountAction: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   scroll: { padding: 16, paddingBottom: 40 },
   title: {
     fontSize: 26,
