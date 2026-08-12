@@ -8,6 +8,8 @@ import {
 } from "./decisions";
 
 const CLUSTER_DEPTH = 2;
+/** Profondeur max de la lignée sous une Fiche d'arrêt (arborescence). */
+export const LINEAGE_DEPTH = 6;
 
 export type DecadeGroup = {
   decade: string;
@@ -124,13 +126,101 @@ export function directRelations(
  */
 export function relatedCluster(
   byId: Map<string, Decision>,
-  id: string
+  id: string,
+  maxDepth: number = CLUSTER_DEPTH
 ): Decision[] {
-  const graph = buildRelationGraph(byId, id, CLUSTER_DEPTH);
+  const graph = buildRelationGraph(byId, id, maxDepth);
   const items = [...graph.keys()]
     .map((gid) => byId.get(gid))
     .filter((d): d is Decision => !!d);
   return sortChronologically(items);
+}
+
+export type LineageTreeNode = {
+  decision: Decision;
+  depth: number;
+  children: LineageTreeNode[];
+};
+
+/** Nœud aplati pour rendu d'arborescence (indentation + guides). */
+export type LineageFlatNode = {
+  decision: Decision;
+  depth: number;
+  /** Dernier enfant de son parent (pour └─ vs ├─). */
+  isLast: boolean;
+  /**
+   * Pour chaque niveau ancestor (1..depth-1) : faut-il prolonger le filet
+   * vertical (frère suivant encore présent) ?
+   */
+  guides: boolean[];
+};
+
+/**
+ * Arbre de lignée (BFS, profondeur max LINEAGE_DEPTH) :
+ * chaque décision n'apparaît qu'une fois, rattachée au premier parent trouvé.
+ */
+export function buildLineageTree(
+  byId: Map<string, Decision>,
+  id: string,
+  maxDepth: number = LINEAGE_DEPTH
+): LineageTreeNode | null {
+  const root = byId.get(id);
+  if (!root) return null;
+
+  const visited = new Set<string>([id]);
+
+  const build = (nodeId: string, depth: number): LineageTreeNode => {
+    const decision = byId.get(nodeId)!;
+    const children: LineageTreeNode[] = [];
+    if (depth < maxDepth) {
+      const childDecisions = sortChronologically(
+        [...getNeighbors(byId, nodeId)]
+          .filter((nid) => !visited.has(nid) && byId.has(nid))
+          .map((nid) => byId.get(nid)!)
+      );
+      for (const child of childDecisions) {
+        visited.add(child.id);
+        children.push(build(child.id, depth + 1));
+      }
+    }
+    return { decision, depth, children };
+  };
+
+  return build(id, 0);
+}
+
+/** Aplatit l'arbre pour un rendu ligne à ligne avec indentation. */
+export function flattenLineageTree(
+  root: LineageTreeNode,
+  options: { includeRoot?: boolean } = {}
+): LineageFlatNode[] {
+  const includeRoot = options.includeRoot !== false;
+  const out: LineageFlatNode[] = [];
+
+  const walk = (
+    node: LineageTreeNode,
+    isLast: boolean,
+    guides: boolean[]
+  ) => {
+    if (includeRoot || node.depth > 0) {
+      out.push({
+        decision: node.decision,
+        depth: node.depth,
+        isLast,
+        guides,
+      });
+    }
+    node.children.forEach((child, i) => {
+      const childIsLast = i === node.children.length - 1;
+      // Sous la racine : pas de filet vertical avant le premier branchement.
+      const childGuides =
+        node.depth === 0 ? [] : [...guides, !isLast];
+      walk(child, childIsLast, childGuides);
+    });
+  };
+
+  walk(root, true, []);
+  return out;
 }
 
 export { buildById };

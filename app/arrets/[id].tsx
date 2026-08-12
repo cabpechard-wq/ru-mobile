@@ -14,9 +14,12 @@ import { PageHeader } from "../../src/components/PageHeader";
 import { useCardsData } from "../../src/data/CardsProvider";
 import {
   buildById,
+  buildLineageTree,
   decadeKey,
   directRelations,
-  relatedCluster,
+  flattenLineageTree,
+  LINEAGE_DEPTH,
+  type LineageFlatNode,
 } from "../../src/data/chronologie";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import {
@@ -158,17 +161,11 @@ export default function ArretFicheScreen() {
     [byId, decision],
   );
 
-  const lineageTimeline = useMemo(() => {
+  const lineageNodes = useMemo((): LineageFlatNode[] => {
     if (!decision) return [];
-    const cluster = relatedCluster(byId, decision.id);
-    const seen = new Set<string>();
-    const items: Decision[] = [];
-    for (const d of [decision, ...cluster]) {
-      if (seen.has(d.id)) continue;
-      seen.add(d.id);
-      items.push(d);
-    }
-    return items.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+    const tree = buildLineageTree(byId, decision.id, LINEAGE_DEPTH);
+    if (!tree) return [];
+    return flattenLineageTree(tree, { includeRoot: true });
   }, [byId, decision]);
 
   if (state.status === "loading") {
@@ -222,7 +219,7 @@ export default function ArretFicheScreen() {
     decision.formation,
   ].filter(Boolean);
 
-  const showLineage = lineageTimeline.length > 1;
+  const showLineage = lineageNodes.length > 1;
   const decade = decadeKey(decision.annee);
 
   return (
@@ -298,29 +295,49 @@ export default function ArretFicheScreen() {
         {showLineage ? (
           <View style={styles.lineage}>
             <Text style={styles.relatedTitle}>Lignée jurisprudentielle</Text>
-            <View style={styles.stepper}>
-              {lineageTimeline.map((d) => {
+            <Text style={styles.lineageHint}>
+              Arborescence jusqu’à {LINEAGE_DEPTH} niveaux de relations
+            </Text>
+            <View style={styles.tree}>
+              {lineageNodes.map((node) => {
+                const d = node.decision;
                 const isCurrent = d.id === decision.id;
+                const branch =
+                  node.depth === 0 ? "" : node.isLast ? "└─ " : "├─ ";
                 return (
                   <Pressable
-                    key={d.id}
+                    key={`${node.depth}-${d.id}`}
                     disabled={isCurrent}
                     onPress={() => router.push(ficheHref(d) as never)}
-                    style={styles.stepRow}
+                    style={styles.treeRow}
                   >
+                    <View style={styles.treeGuides}>
+                      {node.guides.map((cont, gi) => (
+                        <Text key={gi} style={styles.treeGuide}>
+                          {cont ? "│ " : "  "}
+                        </Text>
+                      ))}
+                      {node.depth > 0 ? (
+                        <Text style={styles.treeBranch}>{branch}</Text>
+                      ) : null}
+                    </View>
                     <View
                       style={[
-                        styles.stepDot,
-                        isCurrent && styles.stepDotCurrent,
+                        styles.treeDot,
+                        isCurrent && styles.treeDotCurrent,
+                        node.depth > 0 && styles.treeDotLevel,
                       ]}
                     />
-                    <View style={styles.stepBody}>
+                    <View style={styles.treeBody}>
+                      {node.depth > 0 ? (
+                        <Text style={styles.treeLevel}>N{node.depth}</Text>
+                      ) : null}
                       <Text
                         style={[
-                          styles.stepNom,
-                          isCurrent && styles.stepNomCurrent,
+                          styles.treeNom,
+                          isCurrent && styles.treeNomCurrent,
                         ]}
-                        numberOfLines={1}
+                        numberOfLines={2}
                       >
                         {formatDateFr(d.date)} — {d.nom}
                       </Text>
@@ -431,28 +448,58 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: 14,
   },
-  stepper: { marginTop: 8, gap: 2 },
-  stepRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 6,
+  lineageHint: {
+    color: colors.muted,
+    fontSize: 12,
+    marginBottom: 8,
   },
-  stepDot: {
+  tree: { marginTop: 4, gap: 2 },
+  treeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 5,
+    gap: 6,
+  },
+  treeGuides: { flexDirection: "row", paddingTop: 1 },
+  treeGuide: {
+    fontFamily: "monospace",
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.border,
+  },
+  treeBranch: {
+    fontFamily: "monospace",
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.muted,
+  },
+  treeDot: {
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: colors.border,
-  },
-  stepDotCurrent: {
     backgroundColor: colors.accent,
+    marginTop: 5,
+  },
+  treeDotCurrent: {
     width: 11,
     height: 11,
     borderRadius: 6,
+    marginTop: 4,
   },
-  stepBody: { flex: 1 },
-  stepNom: { color: colors.muted, fontSize: 13 },
-  stepNomCurrent: { color: colors.ink, fontWeight: "700" },
+  treeDotLevel: {
+    backgroundColor: colors.brass,
+    opacity: 0.85,
+  },
+  treeBody: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 6 },
+  treeLevel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: colors.brass,
+    marginTop: 2,
+    minWidth: 18,
+  },
+  treeNom: { flex: 1, color: colors.muted, fontSize: 13, lineHeight: 18 },
+  treeNomCurrent: { color: colors.ink, fontWeight: "700" },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
   center: {
     flex: 1,
