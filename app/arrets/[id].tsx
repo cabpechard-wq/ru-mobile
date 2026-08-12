@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -13,6 +13,11 @@ import { ErrorScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useCardsData } from "../../src/data/CardsProvider";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
+import {
+  considerantFromCards,
+  fetchConsiderantFromSite,
+  ficheSlugForConsiderant,
+} from "../../src/data/considerant";
 import { formatDateFr, starsLabel, type Decision } from "../../src/data/decisions";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
@@ -22,17 +27,37 @@ function HighlightSection({
   title,
   text,
   tone = "brass",
+  loading,
 }: {
   title: string;
   text?: string;
   /** Objet/Portée = brass ; Considérant = accent (teal). */
   tone?: "brass" | "accent";
+  loading?: boolean;
 }) {
+  if (loading) {
+    const isAccent = tone === "accent";
+    return (
+      <View style={[styles.highlight, isAccent && styles.highlightAccent]}>
+        <Text
+          style={[
+            styles.highlightTitle,
+            isAccent && styles.highlightTitleAccent,
+          ]}
+        >
+          {title}
+        </Text>
+        <ActivityIndicator color={colors.accent} style={{ marginVertical: 6 }} />
+      </View>
+    );
+  }
   if (!(text || "").trim()) return null;
   const isAccent = tone === "accent";
   return (
     <View style={[styles.highlight, isAccent && styles.highlightAccent]}>
-      <Text style={[styles.highlightTitle, isAccent && styles.highlightTitleAccent]}>
+      <Text
+        style={[styles.highlightTitle, isAccent && styles.highlightTitleAccent]}
+      >
         {title}
       </Text>
       <Text style={styles.highlightText}>{text}</Text>
@@ -68,16 +93,41 @@ export default function ArretFicheScreen() {
     return findDecision(state.decisions, id);
   }, [state, id]);
 
-  const considerant = useMemo(() => {
-    if (!decision) return undefined;
-    if (cards.status === "ready") {
-      const fromCards = cards.data.allCards.find(
-        (c) => c.id === decision.id || c.recto === decision.nom
-      )?.considerant;
-      if ((fromCards || "").trim()) return fromCards;
-    }
-    return undefined;
+  const fromCards = useMemo(() => {
+    if (!decision || cards.status !== "ready") return undefined;
+    return considerantFromCards(decision, cards.data.allCards);
   }, [decision, cards]);
+
+  const [fromSite, setFromSite] = useState<string | undefined>();
+  const [siteLoading, setSiteLoading] = useState(false);
+
+  useEffect(() => {
+    setFromSite(undefined);
+    if (!decision || fromCards) {
+      setSiteLoading(false);
+      return;
+    }
+    const slug = ficheSlugForConsiderant(decision);
+    if (!slug) {
+      setSiteLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSiteLoading(true);
+    fetchConsiderantFromSite(slug).then((text) => {
+      if (cancelled) return;
+      setFromSite(text);
+      setSiteLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [decision, fromCards]);
+
+  const considerant = fromCards || fromSite;
+  const considerantLoading =
+    !considerant &&
+    (siteLoading || (cards.status === "loading" && !fromSite));
 
   if (state.status === "loading") {
     return (
@@ -154,6 +204,7 @@ export default function ArretFicheScreen() {
           title="Considérant de principe"
           text={considerant}
           tone="accent"
+          loading={considerantLoading}
         />
 
         <View style={styles.bodyBlock}>
