@@ -9,11 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlipCard } from "../src/components/FlipCard";
-import {
-  cardImportanceLevel,
-  colorForLabel,
-  starsLabel,
-} from "../src/data/cards";
+import { useCardsData } from "../src/data/CardsProvider";
+import { cardImportanceLevel, starsLabel } from "../src/data/cards";
 import { useStudySession } from "../src/data/StudyContext";
 import { colors, notionTone } from "../src/theme/colors";
 
@@ -44,9 +41,11 @@ function DetailBox({ title, text }: { title: string; text?: string }) {
 function ColoredTag({
   label,
   group,
+  colorForLabel,
 }: {
   label: string;
   group: "theme" | "notion";
+  colorForLabel: (label: string, group: "theme" | "notion") => string;
 }) {
   const tone = notionTone(colorForLabel(label, group));
   return (
@@ -64,6 +63,11 @@ function ColoredTag({
 export default function StudyScreen() {
   const router = useRouter();
   const { session } = useStudySession();
+  const cardsState = useCardsData();
+  const colorForLabel =
+    cardsState.status === "ready"
+      ? cardsState.data.colorForLabel
+      : () => "default";
   const base = session.cards;
 
   const [order, setOrder] = useState(() => base.map((_, i) => i));
@@ -289,10 +293,20 @@ export default function StudyScreen() {
                     </Text>
                   ) : null}
                   {(c.themes || []).map((t) => (
-                    <ColoredTag key={`t-${t}`} label={t} group="theme" />
+                    <ColoredTag
+                      key={`t-${t}`}
+                      label={t}
+                      group="theme"
+                      colorForLabel={colorForLabel}
+                    />
                   ))}
                   {(c.notions || []).map((n) => (
-                    <ColoredTag key={`n-${n}`} label={n} group="notion" />
+                    <ColoredTag
+                      key={`n-${n}`}
+                      label={n}
+                      group="notion"
+                      colorForLabel={colorForLabel}
+                    />
                   ))}
                 </View>
               </View>

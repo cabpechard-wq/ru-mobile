@@ -10,16 +10,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../src/components/Accordion";
 import { Chip } from "../src/components/Chip";
-import {
-  PAGE_TITLE,
-  allCards,
-  allNotions,
-  allThemes,
-  colorForLabel,
-  presentImportanceLevels,
-  starsLabel,
-  type Card,
-} from "../src/data/cards";
+import { ErrorScreen, LoadingScreen } from "../src/components/DataStatus";
+import { useCardsData } from "../src/data/CardsProvider";
+import { PAGE_TITLE } from "../src/data/config";
+import { type Card } from "../src/data/cards";
 import { useStudySession } from "../src/data/StudyContext";
 import { useFilters } from "../src/hooks/useFilters";
 import { colors } from "../src/theme/colors";
@@ -33,7 +27,19 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
-export default function HomeScreen() {
+function HomeContent({
+  allCards,
+  allThemes,
+  allNotions,
+  presentImportanceLevels,
+  colorForLabel,
+}: {
+  allCards: Card[];
+  allThemes: string[];
+  allNotions: string[];
+  presentImportanceLevels: number[];
+  colorForLabel: (label: string, group: "theme" | "notion") => string;
+}) {
   const router = useRouter();
   const { setSession } = useStudySession();
   const {
@@ -46,7 +52,7 @@ export default function HomeScreen() {
     toggle,
     clear,
     selectionHint,
-  } = useFilters();
+  } = useFilters(allCards);
 
   const enterStudy = (cards: Card[], hint: string) => {
     if (!cards.length) return;
@@ -70,103 +76,127 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>{PAGE_TITLE}</Text>
-        <Text style={styles.sub}>
-          1 thème (choix unique), notions et importance — comme sur le web.
-          Laissez vide pour tout le set ({allCards.length} cartes).
-        </Text>
+    <ScrollView contentContainerStyle={styles.scroll}>
+      <Text style={styles.title}>{PAGE_TITLE}</Text>
+      <Text style={styles.sub}>
+        1 thème (choix unique), notions et importance — comme sur le web.
+        Laissez vide pour tout le set ({allCards.length} cartes).
+      </Text>
 
-        <View style={styles.card}>
-          <Accordion
-            title="1 — Thèmes (1 seul choix)"
-            onClear={() => clear("theme")}
-          >
-            <View style={styles.chips}>
-              {allThemes.length ? (
-                allThemes.map((t) => (
-                  <Chip
-                    key={t}
-                    label={t}
-                    colorName={colorForLabel(t, "theme")}
-                    selected={selectedThemes.includes(t)}
-                    disabled={!isChipEnabled("theme", t)}
-                    onPress={() => toggle("theme", t)}
-                  />
-                ))
-              ) : (
-                <Text style={styles.emptyChips}>Aucun classificateur renseigné.</Text>
-              )}
-            </View>
-          </Accordion>
-
-          <Accordion title="2 — Notions" onClear={() => clear("notion")}>
-            <View style={styles.chips}>
-              {allNotions.length ? (
-                allNotions.map((n) => (
-                  <Chip
-                    key={n}
-                    label={n}
-                    colorName={colorForLabel(n, "notion")}
-                    selected={selectedNotions.includes(n)}
-                    disabled={!isChipEnabled("notion", n)}
-                    onPress={() => toggle("notion", n)}
-                  />
-                ))
-              ) : (
-                <Text style={styles.emptyChips}>Aucun classificateur renseigné.</Text>
-              )}
-            </View>
-          </Accordion>
-
-          <Accordion
-            title="3 — Importance"
-            onClear={() => clear("importance")}
-          >
-            <View style={styles.chips}>
-              {(presentImportanceLevels.length
-                ? presentImportanceLevels
-                : [1, 2, 3, 4]
-              ).map((lvl) => (
+      <View style={styles.card}>
+        <Accordion
+          title="1 — Thèmes (1 seul choix)"
+          onClear={() => clear("theme")}
+        >
+          <View style={styles.chips}>
+            {allThemes.length ? (
+              allThemes.map((t) => (
                 <Chip
-                  key={lvl}
-                  label={starsLabel(lvl)}
-                  colorName="default"
-                  selected={selectedImportance.includes(lvl)}
-                  disabled={!isChipEnabled("importance", lvl)}
-                  onPress={() => toggle("importance", lvl)}
+                  key={t}
+                  label={t}
+                  colorName={colorForLabel(t, "theme")}
+                  selected={selectedThemes.includes(t)}
+                  disabled={!isChipEnabled("theme", t)}
+                  onPress={() => toggle("theme", t)}
                 />
-              ))}
-            </View>
-          </Accordion>
+              ))
+            ) : (
+              <Text style={styles.emptyChips}>Aucun classificateur renseigné.</Text>
+            )}
+          </View>
+        </Accordion>
 
-          <View style={styles.footer}>
-            <View style={styles.countBlock}>
-              <Text style={styles.count}>
-                <Text style={styles.countNum}>{count}</Text> carte(s)
-              </Text>
-              <Text style={styles.hint}>{selectionHint}</Text>
-            </View>
-            <View style={styles.actions}>
-              <Pressable
-                onPress={startRandom10}
-                disabled={!count}
-                style={[styles.btnRandom, !count && styles.btnDisabled]}
-              >
-                <Text style={styles.btnRandomText}>10 au hasard…</Text>
-              </Pressable>
-              <Pressable
-                onPress={startAll}
-                disabled={!count}
-                style={[styles.btn, !count && styles.btnDisabled]}
-              >
-                <Text style={styles.btnText}>Étudier</Text>
-              </Pressable>
-            </View>
+        <Accordion title="2 — Notions" onClear={() => clear("notion")}>
+          <View style={styles.chips}>
+            {allNotions.length ? (
+              allNotions.map((n) => (
+                <Chip
+                  key={n}
+                  label={n}
+                  colorName={colorForLabel(n, "notion")}
+                  selected={selectedNotions.includes(n)}
+                  disabled={!isChipEnabled("notion", n)}
+                  onPress={() => toggle("notion", n)}
+                />
+              ))
+            ) : (
+              <Text style={styles.emptyChips}>Aucun classificateur renseigné.</Text>
+            )}
+          </View>
+        </Accordion>
+
+        <Accordion
+          title="3 — Importance"
+          onClear={() => clear("importance")}
+        >
+          <View style={styles.chips}>
+            {(presentImportanceLevels.length
+              ? presentImportanceLevels
+              : [1, 2, 3, 4]
+            ).map((lvl) => (
+              <Chip
+                key={lvl}
+                label={starsLabel(lvl)}
+                colorName="default"
+                selected={selectedImportance.includes(lvl)}
+                disabled={!isChipEnabled("importance", lvl)}
+                onPress={() => toggle("importance", lvl)}
+              />
+            ))}
+          </View>
+        </Accordion>
+
+        <View style={styles.footer}>
+          <View style={styles.countBlock}>
+            <Text style={styles.count}>
+              <Text style={styles.countNum}>{count}</Text> carte(s)
+            </Text>
+            <Text style={styles.hint}>{selectionHint}</Text>
+          </View>
+          <View style={styles.actions}>
+            <Pressable
+              onPress={startRandom10}
+              disabled={!count}
+              style={[styles.btnRandom, !count && styles.btnDisabled]}
+            >
+              <Text style={styles.btnRandomText}>10 au hasard…</Text>
+            </Pressable>
+            <Pressable
+              onPress={startAll}
+              disabled={!count}
+              style={[styles.btn, !count && styles.btnDisabled]}
+            >
+              <Text style={styles.btnText}>Étudier</Text>
+            </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </View>
+    </ScrollView>
+  );
+}
+
+function starsLabel(level: number): string {
+  return level ? "★".repeat(level) : "";
+}
+
+export default function HomeScreen() {
+  const cardsState = useCardsData();
+
+  return (
+    <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      {cardsState.status === "loading" ? <LoadingScreen /> : null}
+      {cardsState.status === "error" ? (
+        <ErrorScreen message={cardsState.message} onRetry={cardsState.reload} />
+      ) : null}
+      {cardsState.status === "ready" ? (
+        <HomeContent
+          allCards={cardsState.data.allCards}
+          allThemes={cardsState.data.allThemes}
+          allNotions={cardsState.data.allNotions}
+          presentImportanceLevels={cardsState.data.presentImportanceLevels}
+          colorForLabel={cardsState.data.colorForLabel}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

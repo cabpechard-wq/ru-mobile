@@ -1,5 +1,3 @@
-import raw from "../../assets/cards.json";
-
 export type Card = {
   id: string;
   recto: string;
@@ -39,8 +37,6 @@ export type FlipcardsData = {
   cards: Card[];
 };
 
-export const PAGE_TITLE = "Grands arrêts du droit public et administratif";
-
 /** Niveaux d'importance (comme le web : ★ … ★★★★). */
 export const IMPORTANCE_LEVELS = [1, 2, 3, 4] as const;
 
@@ -76,25 +72,16 @@ function normalizeCard(c: Card): Card {
   };
 }
 
-export const data = raw as FlipcardsData;
-export const allCards: Card[] = (data.cards || [])
-  .filter((c) => !!c.recto)
-  .map(normalizeCard);
-export const allThemes: string[] = data.classifiers?.themes || [];
-export const allNotions: string[] = data.classifiers?.notions || [];
+export type NormalizedCardsData = {
+  raw: FlipcardsData;
+  allCards: Card[];
+  allThemes: string[];
+  allNotions: string[];
+  presentImportanceLevels: number[];
+  colorForLabel: (label: string, group: "theme" | "notion") => string;
+};
 
-/** Niveaux réellement présents dans le jeu (au moins 1 carte). */
-export const presentImportanceLevels: number[] = IMPORTANCE_LEVELS.filter((lvl) =>
-  allCards.some((c) => cardImportanceLevel(c) === lvl)
-);
-
-const themeColors = data.classifier_colors?.themes || {};
-const notionColors = data.classifier_colors?.notions || {};
-
-function lookupColor(
-  label: string,
-  mapping: Record<string, string>
-): string {
+function lookupColor(label: string, mapping: Record<string, string>): string {
   const bit = (label || "").trim();
   if (!bit) return "default";
   if (mapping[bit]) return mapping[bit];
@@ -114,9 +101,26 @@ function lookupColor(
   return "default";
 }
 
-export function colorForLabel(
-  label: string,
-  group: "theme" | "notion"
-): string {
-  return lookupColor(label, group === "theme" ? themeColors : notionColors);
+/** Normalise une réponse JSON brute (fetch) en données prêtes à l'emploi. */
+export function normalizeCardsData(raw: FlipcardsData): NormalizedCardsData {
+  const allCards: Card[] = (raw.cards || [])
+    .filter((c) => !!c.recto)
+    .map(normalizeCard);
+  const allThemes = raw.classifiers?.themes || [];
+  const allNotions = raw.classifiers?.notions || [];
+  const presentImportanceLevels = IMPORTANCE_LEVELS.filter((lvl) =>
+    allCards.some((c) => cardImportanceLevel(c) === lvl)
+  );
+  const themeColors = raw.classifier_colors?.themes || {};
+  const notionColors = raw.classifier_colors?.notions || {};
+
+  return {
+    raw,
+    allCards,
+    allThemes,
+    allNotions,
+    presentImportanceLevels,
+    colorForLabel: (label, group) =>
+      lookupColor(label, group === "theme" ? themeColors : notionColors),
+  };
 }

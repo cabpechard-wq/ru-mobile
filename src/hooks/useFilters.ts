@@ -1,9 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  allCards,
-  cardImportanceLevel,
-  type Card,
-} from "../data/cards";
+import { cardImportanceLevel, type Card } from "../data/cards";
 
 export type FilterGroup = "theme" | "notion" | "importance";
 
@@ -52,7 +48,7 @@ function matchesUpstream(
  * - Importance : multi OR sur niveaux 1–4
  * Cascade chips : Thème → Notions → ★
  */
-export function useFilters() {
+export function useFilters(allCards: Card[]) {
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [selectedNotions, setSelectedNotions] = useState<string[]>([]);
   const [selectedImportance, setSelectedImportance] = useState<number[]>([]);
@@ -62,7 +58,7 @@ export function useFilters() {
       allCards.filter((c) =>
         matchesUpstream(c, selectedThemes, selectedNotions, selectedImportance)
       ),
-    [selectedThemes, selectedNotions, selectedImportance]
+    [allCards, selectedThemes, selectedNotions, selectedImportance]
   );
 
   const anyFilter =
@@ -109,7 +105,7 @@ export function useFilters() {
           }) && cardImportanceLevel(card) === lvl
       );
     },
-    [anyFilter, selectedThemes, selectedNotions, selectedImportance]
+    [allCards, anyFilter, selectedThemes, selectedNotions, selectedImportance]
   );
 
   const toggle = useCallback((group: FilterGroup, value: string | number) => {

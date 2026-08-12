@@ -4,14 +4,10 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "prestart": "node scripts/sync-data.js",
-    "preandroid": "node scripts/sync-data.js",
-    "preios": "node scripts/sync-data.js",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "sync-data": "node scripts/sync-data.js",
     "build:apk": "eas build -p android --profile preview"
   },
   "dependencies": {

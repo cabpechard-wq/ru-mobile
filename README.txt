@@ -1,6 +1,13 @@
 # Les Ressources Universitaires — app mobile (Expo)
 
-Flipcards jurisprudence (JSON local). Parcours : Accueil (Thèmes/Notions) → Étudier.
+Flipcards jurisprudence. Parcours : Accueil (Thèmes/Notions) → Étudier.
+
+Les données sont récupérées en direct (HTTPS) depuis le site publié
+(même source que le web, `src/data/config.ts` → CARDS_ENDPOINT) — une
+connexion est nécessaire à chaque lancement, aucune donnée n'est
+embarquée dans l'app. Étape actuelle : jeu de démo public
+(`/demo/cards.json`). Le jeu complet (membres) arrivera avec
+l'authentification SSO (compte web).
 
 ## Prérequis
 
@@ -11,15 +18,7 @@ Node.js 20+.
 ```powershell
 cd mobile
 npm install
-npm run sync-data
 npm start
 ```
 
 Ou : `.\Lancer.ps1`
-
-`sync-data` copie le JSON flipcards le plus récent depuis :
-- `$env:EP_OUTPUT_ROOT/flipcards/output`
-- `G:/Mon Drive/Les Ressources Universitaires/flipcards/output`
-- `output/` à la racine du monorepo
-
-Générer un JSON : `python -m flipcards --offline --format json`
