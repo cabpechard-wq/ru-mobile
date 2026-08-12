@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -71,12 +71,15 @@ function DecisionRow({
   );
 }
 
+/** Décennie ouverte par défaut — évite de monter toute la frise (~995). */
+const DEFAULT_DECADE = "1820";
+
 export default function ChronologieListScreen() {
   const router = useRouter();
   const state = useChronologieData();
   const [filters, setFilters] = useState<ChronoFilters>(EMPTY_CHRONO_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activeDecade, setActiveDecade] = useState<string | null>(null);
+  const [activeDecade, setActiveDecade] = useState<string | null>(DEFAULT_DECADE);
 
   const byId = useMemo(
     () => (state.status === "ready" ? buildById(state.decisions) : new Map()),
@@ -103,13 +106,25 @@ export default function ChronologieListScreen() {
     ? groups.filter((g) => g.decade === activeDecade)
     : groups;
 
+  useEffect(() => {
+    if (!groups.length) return;
+    // null = « Toutes » (choix utilisateur) — on ne force pas.
+    if (activeDecade == null) return;
+    if (groups.some((g) => g.decade === activeDecade)) return;
+    const fallback =
+      groups.find((g) => g.decade === DEFAULT_DECADE)?.decade ??
+      groups[0]?.decade ??
+      null;
+    setActiveDecade(fallback);
+  }, [groups, activeDecade]);
+
   const setFilter = <K extends keyof ChronoFilters>(key: K, value: ChronoFilters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const resetFilters = () => {
     setFilters(EMPTY_CHRONO_FILTERS);
-    setActiveDecade(null);
+    setActiveDecade(DEFAULT_DECADE);
   };
 
   const anyFilter =
