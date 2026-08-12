@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,15 +12,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useCardsData } from "../../src/data/CardsProvider";
+import {
+  buildById,
+  directRelations,
+  relatedCluster,
+} from "../../src/data/chronologie";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import {
   considerantFromCards,
   fetchConsiderantFromSite,
   ficheSlugForConsiderant,
 } from "../../src/data/considerant";
-import { formatDateFr, starsLabel, type Decision } from "../../src/data/decisions";
+import {
+  formatDateFr,
+  starsLabel,
+  type Decision,
+} from "../../src/data/decisions";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
+
+function ficheHref(d: Decision): string {
+  return `/arrets/${d.slugFiche || d.id}`;
+}
 
 /** Synthèse (Objet / Portée / Considérant) — mise en avant. */
 function HighlightSection({
@@ -85,9 +98,18 @@ function findDecision(decisions: Decision[], id: string): Decision | undefined {
 }
 
 export default function ArretFicheScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useChronologieData();
   const cards = useCardsData();
+
+  const byId = useMemo(
+    () =>
+      state.status === "ready"
+        ? buildById(state.decisions)
+        : new Map<string, Decision>(),
+    [state],
+  );
 
   const decision = useMemo(() => {
     if (state.status !== "ready" || !id) return undefined;
@@ -129,6 +151,24 @@ export default function ArretFicheScreen() {
   const considerantLoading =
     !considerant &&
     (siteLoading || (cards.status === "loading" && !fromSite));
+
+  const related = useMemo(
+    () => (decision ? directRelations(byId, decision.id) : []),
+    [byId, decision],
+  );
+
+  const lineageTimeline = useMemo(() => {
+    if (!decision) return [];
+    const cluster = relatedCluster(byId, decision.id);
+    const seen = new Set<string>();
+    const items: Decision[] = [];
+    for (const d of [decision, ...cluster]) {
+      if (seen.has(d.id)) continue;
+      seen.add(d.id);
+      items.push(d);
+    }
+    return items.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  }, [byId, decision]);
 
   if (state.status === "loading") {
     return (
@@ -181,6 +221,8 @@ export default function ArretFicheScreen() {
     decision.formation,
   ].filter(Boolean);
 
+  const showLineage = lineageTimeline.length > 1;
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <PageHeader trail={[SECTION.arrets, decision.nom]} />
@@ -214,6 +256,68 @@ export default function ArretFicheScreen() {
           <BodySection title="Solution" text={decision.solution} />
           <BodySection title="Perspective" text={decision.perspective} />
         </View>
+
+        {related.length ? (
+          <View style={styles.related}>
+            <Text style={styles.relatedTitle}>
+              Décisions liées ({related.length})
+            </Text>
+            {related.map((d) => (
+              <Pressable
+                key={d.id}
+                testID={`related-${d.id}`}
+                style={styles.relatedRow}
+                onPress={() => router.push(ficheHref(d) as never)}
+              >
+                <Text style={styles.relatedNom} numberOfLines={1}>
+                  {d.nom}
+                </Text>
+                {d.objet ? (
+                  <Text style={styles.relatedObjet} numberOfLines={1}>
+                    {d.objet}
+                  </Text>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+        {showLineage ? (
+          <View style={styles.lineage}>
+            <Text style={styles.relatedTitle}>Lignée jurisprudentielle</Text>
+            <View style={styles.stepper}>
+              {lineageTimeline.map((d) => {
+                const isCurrent = d.id === decision.id;
+                return (
+                  <Pressable
+                    key={d.id}
+                    disabled={isCurrent}
+                    onPress={() => router.push(ficheHref(d) as never)}
+                    style={styles.stepRow}
+                  >
+                    <View
+                      style={[
+                        styles.stepDot,
+                        isCurrent && styles.stepDotCurrent,
+                      ]}
+                    />
+                    <View style={styles.stepBody}>
+                      <Text
+                        style={[
+                          styles.stepNom,
+                          isCurrent && styles.stepNomCurrent,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {formatDateFr(d.date)} — {d.nom}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -280,6 +384,51 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   bodyText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
+  related: {
+    marginTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 14,
+    gap: 8,
+  },
+  relatedTitle: { fontWeight: "700", color: colors.ink, marginBottom: 4 },
+  relatedRow: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    backgroundColor: colors.card,
+    padding: 10,
+  },
+  relatedNom: { fontWeight: "700", color: colors.ink, fontSize: 13 },
+  relatedObjet: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  lineage: {
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 14,
+  },
+  stepper: { marginTop: 8, gap: 2 },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  stepDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.border,
+  },
+  stepDotCurrent: {
+    backgroundColor: colors.accent,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+  },
+  stepBody: { flex: 1 },
+  stepNom: { color: colors.muted, fontSize: 13 },
+  stepNomCurrent: { color: colors.ink, fontWeight: "700" },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
   center: {
     flex: 1,

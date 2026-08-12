@@ -339,7 +339,9 @@ export default function ChronologieListScreen() {
                     key={d.id}
                     decision={d}
                     relCount={relationCount(byId, d.id)}
-                    onPress={() => router.push(`/chronologie/${d.id}`)}
+                    onPress={() =>
+                      router.push(`/arrets/${d.slugFiche || d.id}` as never)
+                    }
                   />
                 ))}
               </View>
