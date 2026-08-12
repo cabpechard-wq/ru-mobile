@@ -105,13 +105,21 @@ export default function StudyScreen() {
   const current = cards[index];
 
   /** Pool « N au hasard » : Chronologie (arrêts) ou Dictionnaire (notions). */
-  const asidePool: { id: string; label: string; href: string }[] = useMemo(() => {
+  const asidePool: {
+    id: string;
+    label: string;
+    href: string;
+    objet?: string;
+    portee?: string;
+    definition?: string;
+  }[] = useMemo(() => {
     if (pack === "notions") {
       if (dico.status !== "ready") return [];
       return dico.entries.map((e) => ({
         id: e.id,
         label: e.term,
         href: `/dictionnaire/${e.id}`,
+        definition: e.definition,
       }));
     }
     if (chrono.status === "ready") {
@@ -119,6 +127,8 @@ export default function StudyScreen() {
         id: d.id,
         label: displayNom(d.nom, true),
         href: `/arrets/${d.id}`,
+        objet: d.objet,
+        portee: d.portee,
       }));
     }
     if (cardsState.status === "ready") {
@@ -126,6 +136,8 @@ export default function StudyScreen() {
         id: cardKey(c),
         label: c.recto,
         href: `/arrets/${cardKey(c)}`,
+        objet: c.objet,
+        portee: c.portee,
       }));
     }
     return [];
@@ -366,6 +378,26 @@ export default function StudyScreen() {
                 <Text style={styles.asideRowText} numberOfLines={2}>
                   {item.label}
                 </Text>
+                {pack === "arrets" ? (
+                  <>
+                    {item.objet ? (
+                      <Text style={styles.asideMeta} numberOfLines={3}>
+                        <Text style={styles.asideMetaLabel}>Objet — </Text>
+                        {item.objet}
+                      </Text>
+                    ) : null}
+                    {item.portee ? (
+                      <Text style={styles.asideMeta} numberOfLines={3}>
+                        <Text style={styles.asideMetaLabel}>Portée — </Text>
+                        {item.portee}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : item.definition ? (
+                  <Text style={styles.asideMeta} numberOfLines={4}>
+                    {item.definition}
+                  </Text>
+                ) : null}
               </Pressable>
             ))}
           </View>
@@ -487,11 +519,14 @@ const styles = StyleSheet.create({
   asideRefresh: { color: colors.accent, fontWeight: "700", fontSize: 12 },
   asideHint: { color: colors.muted, fontSize: 11, marginBottom: 4 },
   asideRow: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
+    gap: 4,
   },
-  asideRowText: { color: colors.accent, fontWeight: "600", fontSize: 13 },
+  asideRowText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  asideMeta: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  asideMetaLabel: { color: colors.ink, fontWeight: "700" },
   empty: {
     marginTop: 40,
     textAlign: "center",
