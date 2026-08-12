@@ -7,6 +7,7 @@ import { ChronologieProvider } from "../src/data/ChronologieProvider";
 import { DictionnaireProvider } from "../src/data/DictionnaireProvider";
 import { EnchainementsProvider } from "../src/data/EnchainementsProvider";
 import { EnchainementsSessionProvider } from "../src/data/EnchainementsSessionContext";
+import { ManuelProvider } from "../src/data/ManuelProvider";
 import { RelierProvider } from "../src/data/RelierProvider";
 import { RelierSessionProvider } from "../src/data/RelierSessionContext";
 import { StudyProvider } from "../src/data/StudyContext";
@@ -20,20 +21,22 @@ export default function RootLayout() {
           <EnchainementsProvider>
             <ChronologieProvider>
               <DictionnaireProvider>
-                <StudyProvider>
-                  <RelierSessionProvider>
-                    <EnchainementsSessionProvider>
-                      <StatusBar style="dark" />
-                      <Stack
-                        screenOptions={{
-                          headerShown: false,
-                          contentStyle: { backgroundColor: colors.bg },
-                          animation: "slide_from_right",
-                        }}
-                      />
-                    </EnchainementsSessionProvider>
-                  </RelierSessionProvider>
-                </StudyProvider>
+                <ManuelProvider>
+                  <StudyProvider>
+                    <RelierSessionProvider>
+                      <EnchainementsSessionProvider>
+                        <StatusBar style="dark" />
+                        <Stack
+                          screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: colors.bg },
+                            animation: "slide_from_right",
+                          }}
+                        />
+                      </EnchainementsSessionProvider>
+                    </RelierSessionProvider>
+                  </StudyProvider>
+                </ManuelProvider>
               </DictionnaireProvider>
             </ChronologieProvider>
           </EnchainementsProvider>

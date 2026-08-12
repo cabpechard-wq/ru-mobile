@@ -1,7 +1,15 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ErrorScreen } from "../../src/components/DataStatus";
 import { buildById, directRelations, relatedCluster } from "../../src/data/chronologie";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { formatDateFr, starsLabel, type Decision } from "../../src/data/decisions";
@@ -26,15 +34,48 @@ export default function DecisionFicheScreen() {
     () => (state.status === "ready" ? buildById(state.decisions) : new Map<string, Decision>()),
     [state]
   );
-  const decision = id ? byId.get(id) : undefined;
+  const decision = state.status === "ready" && id ? byId.get(id) : undefined;
 
-  if (state.status !== "ready" || !decision) {
+  if (state.status === "loading") {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (state.status === "error") {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ErrorScreen message={state.message} onRetry={state.reload} />
+      </SafeAreaView>
+    );
+  }
+  if (state.status === "idle-full") {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.center}>
+          <Text style={styles.centerTitle}>Fonds Chronologie non chargé</Text>
+          <Text style={styles.centerText}>
+            Cette décision fait partie du fonds complet (995 décisions, ~3 Mo).
+          </Text>
+          <Pressable style={styles.btn} onPress={state.loadFull}>
+            <Text style={styles.btnText}>Charger le fonds complet</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  if (!decision) {
     return (
       <SafeAreaView style={styles.safe}>
         <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
           <Text style={styles.backText}>← Retour</Text>
         </Pressable>
-        <Text style={styles.empty}>Décision introuvable.</Text>
+        <Text style={styles.empty}>
+          Décision introuvable dans le jeu chargé actuellement (démo).
+        </Text>
       </SafeAreaView>
     );
   }
@@ -218,4 +259,21 @@ const styles = StyleSheet.create({
   stepNom: { color: colors.muted, fontSize: 13 },
   stepNomCurrent: { color: colors.ink, fontWeight: "700" },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 10,
+  },
+  centerTitle: { fontSize: 17, fontWeight: "700", color: colors.ink, textAlign: "center" },
+  centerText: { color: colors.muted, fontSize: 14, textAlign: "center" },
+  btn: {
+    marginTop: 8,
+    backgroundColor: colors.accent,
+    borderRadius: colors.radius,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
+  },
+  btnText: { color: "#fff", fontWeight: "700" },
 });

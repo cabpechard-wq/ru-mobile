@@ -102,6 +102,9 @@ function HomeContent({
       <View style={styles.navSection}>
         <Text style={styles.navLabel}>Cours</Text>
         <View style={styles.exerciseLinks}>
+          <Pressable onPress={() => router.push("/manuel")}>
+            <Text style={styles.courseLinkText}>Cours →</Text>
+          </Pressable>
           <Pressable onPress={() => router.push("/chronologie")}>
             <Text style={styles.courseLinkText}>Chronologie →</Text>
           </Pressable>

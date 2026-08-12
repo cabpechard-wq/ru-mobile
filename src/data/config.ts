@@ -31,6 +31,13 @@ export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chro
 export const DICTIONNAIRE_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries.json`;
 
 /**
+ * Manuel (Cours) : contenu public, comme le Dictionnaire — un seul
+ * endpoint, chargé entièrement (1,5 Mo, léger comparé aux 3 Mo de la
+ * Chronologie complète, pas de bouton de chargement explicite).
+ */
+export const MANUEL_ENDPOINT = `${SITE_BASE_URL}/manuel/chapters.json`;
+
+/**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
  * mobile (`?format=json`), même session/entitlement que le web.
  */
