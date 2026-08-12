@@ -22,12 +22,17 @@ async function fetchJson<T>(url: string, token?: string): Promise<T> {
 }
 
 /**
- * Fetch JSON générique, membre si connecté (Bearer) sinon démo publique.
+ * Fetch JSON générique, membre si connecté sinon démo publique.
  * Retombe sur la démo si la session a expiré (401).
+ *
+ * `requiresAuthHeader` : false pour un JSON statique public (pas de
+ * vérification serveur, pas besoin de Bearer — évite un preflight CORS
+ * inutile). true (défaut) pour un endpoint Worker qui vérifie la session.
  */
 export function useAuthAwareJson<T>(
   demoUrl: string,
-  memberUrl: string
+  memberUrl: string,
+  requiresAuthHeader = true
 ): RemoteJsonState<T> & { reload: () => void } {
   const auth = useAuth();
   const [state, setState] = useState<RemoteJsonState<T>>({ status: "loading" });
@@ -38,7 +43,7 @@ export function useAuthAwareJson<T>(
 
     const isMember = auth.status === "authenticated";
     const url = isMember ? memberUrl : demoUrl;
-    const token = isMember ? auth.token : undefined;
+    const token = isMember && requiresAuthHeader ? auth.token : undefined;
 
     fetchJson<T>(url, token)
       .then((json) => setState({ status: "ready", json, source: isMember ? "member" : "demo" }))
@@ -58,7 +63,7 @@ export function useAuthAwareJson<T>(
         setState({ status: "error", message });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.status, demoUrl, memberUrl]);
+  }, [auth.status, demoUrl, memberUrl, requiresAuthHeader]);
 
   useEffect(() => {
     load();

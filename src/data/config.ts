@@ -16,6 +16,15 @@ export const DEMO_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/demo-enchainements-
 export const MEMBER_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/enchainements-logiques/data/chronology-decisions.json`;
 
 /**
+ * Chronologie (registre Cours, pas Exercices) : même jeu de démo que les
+ * Enchaînements (identique en contenu), fonds complet à l'emplacement
+ * canonique /chronologie/ (995 décisions, ~3,3 Mo — chargement explicite
+ * côté app, pas automatique).
+ */
+export const DEMO_CHRONOLOGIE_ENDPOINT = DEMO_ENCHAINEMENTS_ENDPOINT;
+export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-decisions.json`;
+
+/**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
  * mobile (`?format=json`), même session/entitlement que le web.
  */

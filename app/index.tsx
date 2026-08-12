@@ -87,13 +87,25 @@ function HomeContent({
         {source === "demo" ? " · démo" : ""}).
       </Text>
 
-      <View style={styles.exerciseLinks}>
-        <Pressable onPress={() => router.push("/relier")}>
-          <Text style={styles.exerciseLinkText}>Relier →</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push("/enchainements")}>
-          <Text style={styles.exerciseLinkText}>Enchaînements logiques →</Text>
-        </Pressable>
+      <View style={styles.navSection}>
+        <Text style={styles.navLabel}>Exercices</Text>
+        <View style={styles.exerciseLinks}>
+          <Pressable onPress={() => router.push("/relier")}>
+            <Text style={styles.exerciseLinkText}>Relier →</Text>
+          </Pressable>
+          <Pressable onPress={() => router.push("/enchainements")}>
+            <Text style={styles.exerciseLinkText}>Enchaînements logiques →</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.navSection}>
+        <Text style={styles.navLabel}>Cours</Text>
+        <View style={styles.exerciseLinks}>
+          <Pressable onPress={() => router.push("/chronologie")}>
+            <Text style={styles.courseLinkText}>Chronologie →</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -255,8 +267,18 @@ const styles = StyleSheet.create({
   },
   accountText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   accountAction: { color: colors.accent, fontSize: 12, fontWeight: "700" },
-  exerciseLinks: { flexDirection: "row", gap: 16, marginBottom: 14 },
+  navSection: { marginBottom: 14 },
+  navLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: colors.muted,
+    marginBottom: 4,
+  },
+  exerciseLinks: { flexDirection: "row", gap: 16 },
   exerciseLinkText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  courseLinkText: { color: colors.brass, fontWeight: "700", fontSize: 13 },
   scroll: { padding: 16, paddingBottom: 40 },
   title: {
     fontSize: 26,

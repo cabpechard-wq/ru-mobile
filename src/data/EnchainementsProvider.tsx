@@ -15,7 +15,8 @@ const EnchainementsContext = createContext<EnchainementsContextValue | null>(nul
 export function EnchainementsProvider({ children }: { children: React.ReactNode }) {
   const remote = useAuthAwareJson<ChronologyData>(
     DEMO_ENCHAINEMENTS_ENDPOINT,
-    MEMBER_ENCHAINEMENTS_ENDPOINT
+    MEMBER_ENCHAINEMENTS_ENDPOINT,
+    false // JSON statique public, pas un endpoint Worker : pas de Bearer
   );
 
   const value = useMemo<EnchainementsContextValue>(() => {

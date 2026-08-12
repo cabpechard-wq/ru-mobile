@@ -19,7 +19,7 @@ if (
 
 type Props = {
   title: string;
-  onClear: () => void;
+  onClear?: () => void;
   children: React.ReactNode;
   initiallyOpen?: boolean;
 };
@@ -48,9 +48,11 @@ export function Accordion({
           <Text style={[styles.chevron, open && styles.chevronOpen]}>▾</Text>
           <Text style={styles.title}>{title}</Text>
         </Pressable>
-        <Pressable onPress={onClear} hitSlop={8}>
-          <Text style={styles.clear}>Effacer la sélection</Text>
-        </Pressable>
+        {onClear ? (
+          <Pressable onPress={onClear} hitSlop={8}>
+            <Text style={styles.clear}>Effacer la sélection</Text>
+          </Pressable>
+        ) : null}
       </View>
       {open ? <View style={styles.body}>{children}</View> : null}
     </View>
