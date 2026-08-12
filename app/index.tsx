@@ -105,6 +105,9 @@ function HomeContent({
           <Pressable onPress={() => router.push("/chronologie")}>
             <Text style={styles.courseLinkText}>Chronologie →</Text>
           </Pressable>
+          <Pressable onPress={() => router.push("/dictionnaire")}>
+            <Text style={styles.courseLinkText}>Dictionnaire →</Text>
+          </Pressable>
         </View>
       </View>
 

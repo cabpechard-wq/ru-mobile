@@ -4,6 +4,7 @@ import React from "react";
 import { AuthProvider } from "../src/data/AuthContext";
 import { CardsProvider } from "../src/data/CardsProvider";
 import { ChronologieProvider } from "../src/data/ChronologieProvider";
+import { DictionnaireProvider } from "../src/data/DictionnaireProvider";
 import { EnchainementsProvider } from "../src/data/EnchainementsProvider";
 import { EnchainementsSessionProvider } from "../src/data/EnchainementsSessionContext";
 import { RelierProvider } from "../src/data/RelierProvider";
@@ -18,20 +19,22 @@ export default function RootLayout() {
         <RelierProvider>
           <EnchainementsProvider>
             <ChronologieProvider>
-              <StudyProvider>
-                <RelierSessionProvider>
-                  <EnchainementsSessionProvider>
-                    <StatusBar style="dark" />
-                    <Stack
-                      screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: colors.bg },
-                        animation: "slide_from_right",
-                      }}
-                    />
-                  </EnchainementsSessionProvider>
-                </RelierSessionProvider>
-              </StudyProvider>
+              <DictionnaireProvider>
+                <StudyProvider>
+                  <RelierSessionProvider>
+                    <EnchainementsSessionProvider>
+                      <StatusBar style="dark" />
+                      <Stack
+                        screenOptions={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: colors.bg },
+                          animation: "slide_from_right",
+                        }}
+                      />
+                    </EnchainementsSessionProvider>
+                  </RelierSessionProvider>
+                </StudyProvider>
+              </DictionnaireProvider>
             </ChronologieProvider>
           </EnchainementsProvider>
         </RelierProvider>

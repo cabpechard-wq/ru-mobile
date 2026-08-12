@@ -25,6 +25,12 @@ export const DEMO_CHRONOLOGIE_ENDPOINT = DEMO_ENCHAINEMENTS_ENDPOINT;
 export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-decisions.json`;
 
 /**
+ * Dictionnaire : contenu public sur le site (pas de pack Worker, pas
+ * d'auth) — un seul endpoint, pas de distinction démo/membre.
+ */
+export const DICTIONNAIRE_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries.json`;
+
+/**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
  * mobile (`?format=json`), même session/entitlement que le web.
  */
