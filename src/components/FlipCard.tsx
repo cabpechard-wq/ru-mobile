@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   face: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
