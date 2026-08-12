@@ -9,8 +9,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlipCard } from "../src/components/FlipCard";
+import { pickAsideRandom } from "../src/data/arrets";
+import { ASIDE_RANDOM_COUNT } from "../src/data/config";
 import { useCardsData } from "../src/data/CardsProvider";
-import { cardImportanceLevel, starsLabel } from "../src/data/cards";
+import { useChronologieData } from "../src/data/ChronologieProvider";
+import { cardImportanceLevel, starsLabel, type Card } from "../src/data/cards";
+import { displayNom, type Decision } from "../src/data/decisions";
 import { useStudySession } from "../src/data/StudyContext";
 import { colors, notionTone } from "../src/theme/colors";
 
@@ -49,26 +53,30 @@ function ColoredTag({
 }) {
   const tone = notionTone(colorForLabel(label, group));
   return (
-    <Text
-      style={[
-        styles.tag,
-        { borderColor: tone.border, color: colors.muted },
-      ]}
-    >
+    <Text style={[styles.tag, { borderColor: tone.border, color: colors.muted }]}>
       {label}
     </Text>
   );
+}
+
+function cardKey(c: Card): string {
+  return c.id || c.recto;
 }
 
 export default function StudyScreen() {
   const router = useRouter();
   const { session } = useStudySession();
   const cardsState = useCardsData();
+  const chrono = useChronologieData();
   const colorForLabel =
     cardsState.status === "ready"
       ? cardsState.data.colorForLabel
       : () => "default";
   const base = session.cards;
+  const selectedIds = useMemo(() => {
+    if (session.selectedIds?.length) return new Set(session.selectedIds);
+    return new Set(base.map(cardKey));
+  }, [session.selectedIds, base]);
 
   const [order, setOrder] = useState(() => base.map((_, i) => i));
   const [index, setIndex] = useState(0);
@@ -76,6 +84,7 @@ export default function StudyScreen() {
   const [shuffled, setShuffled] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [asideTick, setAsideTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flippedRef = useRef(flipped);
   const indexRef = useRef(index);
@@ -93,6 +102,7 @@ export default function StudyScreen() {
     setShuffled(false);
     setPlaying(false);
     setDetailsOpen(false);
+    setAsideTick((n) => n + 1);
   }, [base]);
 
   useEffect(() => {
@@ -107,6 +117,28 @@ export default function StudyScreen() {
   );
   cardsLenRef.current = cards.length;
   const current = cards[index];
+
+  /** Pool pour « N au hasard » : fonds Chronologie si dispo, sinon le set Flipcards. */
+  const asidePool: { id: string; label: string }[] = useMemo(() => {
+    if (chrono.status === "ready") {
+      return chrono.decisions.map((d: Decision) => ({
+        id: d.id,
+        label: displayNom(d.nom, true),
+      }));
+    }
+    if (cardsState.status === "ready") {
+      return cardsState.data.allCards.map((c) => ({
+        id: cardKey(c),
+        label: c.recto,
+      }));
+    }
+    return [];
+  }, [chrono, cardsState]);
+
+  const asideItems = useMemo(() => {
+    void asideTick;
+    return pickAsideRandom(asidePool, selectedIds, ASIDE_RANDOM_COUNT);
+  }, [asidePool, selectedIds, asideTick]);
 
   const stopPlay = () => {
     setPlaying(false);
@@ -166,11 +198,18 @@ export default function StudyScreen() {
     });
   };
 
+  const ficheId = current ? cardKey(current) : "";
+  const hasFiche =
+    !!ficheId &&
+    (chrono.status === "ready"
+      ? chrono.decisions.some((d) => d.id === ficheId || d.slugFiche === ficheId)
+      : chrono.status === "idle-full" || chrono.status === "loading");
+
   if (!base.length || !current) {
     return (
       <SafeAreaView style={styles.safe}>
         <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Accueil</Text>
+          <Text style={styles.backText}>← Retour</Text>
         </Pressable>
         <Text style={styles.empty}>Aucune carte pour ces filtres.</Text>
       </SafeAreaView>
@@ -187,7 +226,7 @@ export default function StudyScreen() {
               router.back();
             }}
           >
-            <Text style={styles.backText}>← Accueil</Text>
+            <Text style={styles.backText}>← Retour</Text>
           </Pressable>
           <Text style={styles.summary} numberOfLines={2}>
             {session.hint}
@@ -210,6 +249,16 @@ export default function StudyScreen() {
           onFlip={() => setFlipped((v) => !v)}
           stars={starsLabel(cardImportanceLevel(current))}
         />
+
+        {hasFiche || ficheId ? (
+          <Pressable
+            testID="open-fiche"
+            onPress={() => router.push(`/arrets/${ficheId}`)}
+            style={styles.ficheLink}
+          >
+            <Text style={styles.ficheLinkText}>Ouvrir la fiche d'arrêt →</Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.controls}>
           <View style={styles.side}>
@@ -258,6 +307,34 @@ export default function StudyScreen() {
           <View style={[styles.side, styles.sideRight]} />
         </View>
 
+        {asideItems.length === ASIDE_RANDOM_COUNT ? (
+          <View style={styles.aside}>
+            <View style={styles.asideHead}>
+              <Text style={styles.asideTitle}>
+                {ASIDE_RANDOM_COUNT} au hasard
+              </Text>
+              <Pressable onPress={() => setAsideTick((n) => n + 1)}>
+                <Text style={styles.asideRefresh}>Autres</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.asideHint}>
+              Hors sélection ({asidePool.length - selectedIds.size} disponibles
+              sur {asidePool.length}).
+            </Text>
+            {asideItems.map((item) => (
+              <Pressable
+                key={item.id}
+                style={styles.asideRow}
+                onPress={() => router.push(`/arrets/${item.id}`)}
+              >
+                <Text style={styles.asideRowText} numberOfLines={2}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
         <Pressable
           onPress={() => setDetailsOpen((v) => !v)}
           style={[styles.detailsBtn, detailsOpen && styles.detailsBtnActive]}
@@ -283,7 +360,7 @@ export default function StudyScreen() {
 
         <View style={styles.list}>
           {cards.map((c) => (
-            <View key={c.id || c.recto} style={styles.row}>
+            <View key={cardKey(c)} style={styles.row}>
               <View style={styles.rowLeft}>
                 <Text style={styles.rowTitle}>{c.recto}</Text>
                 <View style={styles.tags}>
@@ -321,7 +398,13 @@ export default function StudyScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: 16, paddingBottom: 48, maxWidth: 560, width: "100%", alignSelf: "center" },
+  scroll: {
+    padding: 16,
+    paddingBottom: 48,
+    maxWidth: 560,
+    width: "100%",
+    alignSelf: "center",
+  },
   bar: {
     flexDirection: "row",
     alignItems: "center",
@@ -329,11 +412,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 14,
   },
-  backText: {
-    fontWeight: "600",
-    color: colors.accent,
-    fontSize: 14,
-  },
+  backText: { fontWeight: "600", color: colors.accent, fontSize: 14 },
   summary: {
     flex: 1,
     textAlign: "right",
@@ -351,22 +430,13 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 448,
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.accent,
-  },
-  controls: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  progressFill: { height: "100%", backgroundColor: colors.accent },
+  ficheLink: { alignSelf: "center", marginTop: 10, paddingVertical: 4 },
+  ficheLinkText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  controls: { marginTop: 12, flexDirection: "row", alignItems: "center" },
   side: { flex: 1, flexDirection: "row", gap: 2 },
   sideRight: { justifyContent: "flex-end" },
-  center: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  center: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconBtn: {
     width: 36,
     height: 36,
@@ -393,6 +463,29 @@ const styles = StyleSheet.create({
     minWidth: 64,
     textAlign: "center",
   },
+  aside: {
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    backgroundColor: colors.card,
+    padding: 12,
+    gap: 6,
+  },
+  asideHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  asideTitle: { fontWeight: "700", color: colors.ink, fontSize: 14 },
+  asideRefresh: { color: colors.accent, fontWeight: "700", fontSize: 12 },
+  asideHint: { color: colors.muted, fontSize: 11, marginBottom: 4 },
+  asideRow: {
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  asideRowText: { color: colors.accent, fontWeight: "600", fontSize: 13 },
   detailsBtn: {
     alignSelf: "center",
     marginTop: 12,
@@ -407,17 +500,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
-  detailsBtnText: {
-    color: colors.muted,
-    fontWeight: "600",
-    fontSize: 13,
-  },
+  detailsBtnText: { color: colors.muted, fontWeight: "600", fontSize: 13 },
   detailsBtnTextActive: { color: "#fff" },
-  details: {
-    marginTop: 12,
-    gap: 10,
-    width: "100%",
-  },
+  details: { marginTop: 12, gap: 10, width: "100%" },
   detailBox: {
     backgroundColor: "#fff",
     borderWidth: 1,
@@ -435,15 +520,8 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: 6,
   },
-  detailText: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.versoText,
-  },
-  detailEmpty: {
-    color: colors.muted,
-    fontStyle: "italic",
-  },
+  detailText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
+  detailEmpty: { color: colors.muted, fontStyle: "italic" },
   list: { marginTop: 28, gap: 8 },
   row: {
     backgroundColor: colors.card,

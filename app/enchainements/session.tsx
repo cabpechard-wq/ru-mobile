@@ -103,6 +103,16 @@ export default function EnchainementsSessionScreen() {
                   {d.objet ? (
                     <Text style={styles.cardObjet}>{d.objet}</Text>
                   ) : null}
+                  {(revealed || (checked && d.id === correctOrder[index]?.id)) ? (
+                    <Pressable
+                      onPress={() =>
+                        router.push(`/arrets/${d.slugFiche || d.id}`)
+                      }
+                      style={styles.ficheLink}
+                    >
+                      <Text style={styles.ficheLinkText}>Fiche d'arrêt →</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
                 <View style={styles.moves}>
                   <Pressable
@@ -192,6 +202,8 @@ const styles = StyleSheet.create({
   cardNom: { fontWeight: "700", color: colors.ink, fontSize: 14, flexShrink: 1 },
   cardDate: { color: colors.accent, fontWeight: "700", fontSize: 12 },
   cardObjet: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  ficheLink: { marginTop: 6 },
+  ficheLinkText: { color: colors.accent, fontWeight: "700", fontSize: 12 },
   moves: { gap: 4 },
   moveBtn: {
     width: 32,

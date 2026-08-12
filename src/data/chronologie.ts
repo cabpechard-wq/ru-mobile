@@ -1,10 +1,39 @@
-import { buildById, buildRelationGraph, getNeighbors, sortChronologically, type Decision } from "./decisions";
+import { themeLabel } from "./arrets";
+import {
+  buildById,
+  buildRelationGraph,
+  getNeighbors,
+  sortChronologically,
+  type Decision,
+} from "./decisions";
 
 const CLUSTER_DEPTH = 2;
 
 export type DecadeGroup = {
   decade: string;
   items: Decision[];
+};
+
+export type ChronoFilters = {
+  query: string;
+  juridiction: string | null;
+  theme: string | null;
+  notion: string | null;
+  importance: number | null;
+  yearFrom: string;
+  yearTo: string;
+  relatedOnly: boolean;
+};
+
+export const EMPTY_CHRONO_FILTERS: ChronoFilters = {
+  query: "",
+  juridiction: null,
+  theme: null,
+  notion: null,
+  importance: null,
+  yearFrom: "",
+  yearTo: "",
+  relatedOnly: false,
 };
 
 /** Compte de relations (bidirectionnel) — sert de badge dans les listes. */
@@ -38,8 +67,45 @@ export function searchDecisions(decisions: Decision[], query: string): Decision[
   });
 }
 
+/** Filtres alignés sur la Chronologie web. */
+export function filterChronologie(
+  decisions: Decision[],
+  byId: Map<string, Decision>,
+  filters: ChronoFilters
+): Decision[] {
+  const from = filters.yearFrom.trim() ? Number(filters.yearFrom) : null;
+  const to = filters.yearTo.trim() ? Number(filters.yearTo) : null;
+  let list = searchDecisions(decisions, filters.query);
+  list = list.filter((d) => {
+    if (filters.juridiction && (d.juridiction || "") !== filters.juridiction) {
+      return false;
+    }
+    if (filters.theme) {
+      const tl = themeLabel(d.theme);
+      if (tl !== filters.theme && d.theme !== filters.theme) return false;
+    }
+    if (filters.notion && !(d.notions || []).includes(filters.notion)) {
+      return false;
+    }
+    if (
+      filters.importance != null &&
+      (d.importance || 0) !== filters.importance
+    ) {
+      return false;
+    }
+    if (from != null && !Number.isNaN(from) && (d.annee || 0) < from) return false;
+    if (to != null && !Number.isNaN(to) && (d.annee || 0) > to) return false;
+    if (filters.relatedOnly && relationCount(byId, d.id) === 0) return false;
+    return true;
+  });
+  return list;
+}
+
 /** Décisions directement liées (depth 1), triées chronologiquement. */
-export function directRelations(byId: Map<string, Decision>, id: string): Decision[] {
+export function directRelations(
+  byId: Map<string, Decision>,
+  id: string
+): Decision[] {
   const neighbors = [...getNeighbors(byId, id)]
     .map((nid) => byId.get(nid))
     .filter((d): d is Decision => !!d);
@@ -48,10 +114,12 @@ export function directRelations(byId: Map<string, Decision>, id: string): Decisi
 
 /**
  * La "lignée" : tout le sous-graphe connecté à `id` jusqu'à CLUSTER_DEPTH,
- * décision courante incluse, trié chronologiquement — la vue d'ensemble
- * d'une évolution jurisprudentielle (fondation → confirmation → revirement…).
+ * décision courante incluse, trié chronologiquement.
  */
-export function relatedCluster(byId: Map<string, Decision>, id: string): Decision[] {
+export function relatedCluster(
+  byId: Map<string, Decision>,
+  id: string
+): Decision[] {
   const graph = buildRelationGraph(byId, id, CLUSTER_DEPTH);
   const items = [...graph.keys()]
     .map((gid) => byId.get(gid))

@@ -6,7 +6,17 @@ import { derangement, type RelierItem } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
 import { colors } from "../../src/theme/colors";
 
-const BADGE_LETTERS = "①②③④⑤⑥⑦⑧⑨⑩".split("");
+/** Chiffres de relation — plus gros, lisibles au tactile. */
+const BADGE_NUMBERS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+
+function ficheSlug(item: RelierItem): string | null {
+  // Grands arrêts : id = slug fiche. Notions : slug notion (pas une fiche d'arrêt).
+  if (item.slug && item.slug.includes("-") && /^(ce|tc|cons|cass|caa)/i.test(item.id)) {
+    return item.id;
+  }
+  if (/^(ce|tc|cons|cass|caa|cedh)/i.test(item.id)) return item.id;
+  return null;
+}
 
 export default function RelierSessionScreen() {
   const router = useRouter();
@@ -15,7 +25,6 @@ export default function RelierSessionScreen() {
 
   const rightOrder = useMemo(() => derangement(items), [items]);
 
-  // pairs: leftId -> index into rightOrder
   const [pairs, setPairs] = useState<Record<string, number>>({});
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
@@ -32,7 +41,6 @@ export default function RelierSessionScreen() {
     if (!selectedLeft) return;
     setPairs((prev) => {
       const next = { ...prev };
-      // Libère ce slot droit s'il était pris par un autre item.
       for (const [leftId, idx] of Object.entries(next)) {
         if (idx === index && leftId !== selectedLeft) delete next[leftId];
       }
@@ -65,6 +73,14 @@ export default function RelierSessionScreen() {
     );
   }
 
+  const verifiedFiches = revealed
+    ? items.filter((item) => {
+        const idx = pairs[item.id];
+        if (idx === undefined) return false;
+        return rightOrder[idx].id === item.id && !!ficheSlug(item);
+      })
+    : [];
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -88,9 +104,10 @@ export default function RelierSessionScreen() {
             {items.map((item) => {
               const pairedIndex = pairs[item.id];
               const isSelected = selectedLeft === item.id;
-              const isCorrect = revealed && pairedIndex !== undefined
-                ? rightOrder[pairedIndex].id === item.id
-                : null;
+              const isCorrect =
+                revealed && pairedIndex !== undefined
+                  ? rightOrder[pairedIndex].id === item.id
+                  : null;
               return (
                 <Pressable
                   key={item.id}
@@ -105,9 +122,11 @@ export default function RelierSessionScreen() {
                   ]}
                 >
                   {pairedIndex !== undefined ? (
-                    <Text style={styles.badge}>
-                      {BADGE_LETTERS[pairedIndex] || "•"}
-                    </Text>
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {BADGE_NUMBERS[pairedIndex] || "•"}
+                      </Text>
+                    </View>
                   ) : null}
                   <Text style={styles.cellText}>{item.recto}</Text>
                 </Pressable>
@@ -136,9 +155,11 @@ export default function RelierSessionScreen() {
                   ]}
                 >
                   {isUsed ? (
-                    <Text style={styles.badge}>
-                      {BADGE_LETTERS[index] || "•"}
-                    </Text>
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {BADGE_NUMBERS[index] || "•"}
+                      </Text>
+                    </View>
                   ) : null}
                   <Text style={styles.cellText}>{item.objet}</Text>
                   {revealed && isCorrect !== true ? (
@@ -154,6 +175,24 @@ export default function RelierSessionScreen() {
           <Text style={styles.score}>
             {correctCount} / {items.length} correct(es)
           </Text>
+        ) : null}
+
+        {verifiedFiches.length ? (
+          <View style={styles.fichesBox}>
+            <Text style={styles.fichesTitle}>Fiches d'arrêts (réponses exactes)</Text>
+            {verifiedFiches.map((item) => {
+              const slug = ficheSlug(item)!;
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => router.push(`/arrets/${slug}`)}
+                  style={styles.ficheRow}
+                >
+                  <Text style={styles.ficheRowText}>{item.recto} →</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         ) : null}
 
         <View style={styles.actions}>
@@ -195,6 +234,7 @@ const styles = StyleSheet.create({
     borderRadius: colors.radius,
     backgroundColor: colors.card,
     padding: 10,
+    paddingRight: 28,
     minHeight: 56,
     justifyContent: "center",
   },
@@ -205,17 +245,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-  cellSelected: { borderColor: colors.accent, borderWidth: 2 },
+  /** Sélection utilisateur = bleu (distinct de l'accent teal). */
+  cellSelected: {
+    borderColor: "#2563eb",
+    borderWidth: 2,
+    backgroundColor: "#dbeafe",
+  },
   cellPaired: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
   cellCorrect: { backgroundColor: colors.okSoft, borderColor: colors.ok },
   cellWrong: { backgroundColor: "#fee2e2", borderColor: "#dc2626" },
   badge: {
     position: "absolute",
-    top: 6,
-    right: 8,
-    fontSize: 12,
-    color: colors.accent,
-    fontWeight: "700",
+    top: 4,
+    right: 4,
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#2563eb",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+    fontVariant: ["tabular-nums"],
   },
   score: {
     textAlign: "center",
@@ -224,6 +279,17 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.ink,
   },
+  fichesBox: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    padding: 12,
+    gap: 6,
+  },
+  fichesTitle: { fontWeight: "700", color: colors.ink, fontSize: 13, marginBottom: 2 },
+  ficheRow: { paddingVertical: 6 },
+  ficheRowText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
   actions: { flexDirection: "row", gap: 10, marginTop: 20 },
   btn: {
     flexGrow: 1,

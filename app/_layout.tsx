@@ -7,7 +7,9 @@ import { ChronologieProvider } from "../src/data/ChronologieProvider";
 import { DictionnaireProvider } from "../src/data/DictionnaireProvider";
 import { EnchainementsProvider } from "../src/data/EnchainementsProvider";
 import { EnchainementsSessionProvider } from "../src/data/EnchainementsSessionContext";
+import { FlipcardsDicoProvider } from "../src/data/FlipcardsDicoProvider";
 import { ManuelProvider } from "../src/data/ManuelProvider";
+import { RelierDicoProvider } from "../src/data/RelierDicoProvider";
 import { RelierProvider } from "../src/data/RelierProvider";
 import { RelierSessionProvider } from "../src/data/RelierSessionContext";
 import { StudyProvider } from "../src/data/StudyContext";
@@ -17,30 +19,34 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <CardsProvider>
-        <RelierProvider>
-          <EnchainementsProvider>
-            <ChronologieProvider>
-              <DictionnaireProvider>
-                <ManuelProvider>
-                  <StudyProvider>
-                    <RelierSessionProvider>
-                      <EnchainementsSessionProvider>
-                        <StatusBar style="dark" />
-                        <Stack
-                          screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: colors.bg },
-                            animation: "slide_from_right",
-                          }}
-                        />
-                      </EnchainementsSessionProvider>
-                    </RelierSessionProvider>
-                  </StudyProvider>
-                </ManuelProvider>
-              </DictionnaireProvider>
-            </ChronologieProvider>
-          </EnchainementsProvider>
-        </RelierProvider>
+        <FlipcardsDicoProvider>
+          <RelierProvider>
+            <RelierDicoProvider>
+              <EnchainementsProvider>
+                <ChronologieProvider>
+                  <DictionnaireProvider>
+                    <ManuelProvider>
+                      <StudyProvider>
+                        <RelierSessionProvider>
+                          <EnchainementsSessionProvider>
+                            <StatusBar style="dark" />
+                            <Stack
+                              screenOptions={{
+                                headerShown: false,
+                                contentStyle: { backgroundColor: colors.bg },
+                                animation: "slide_from_right",
+                              }}
+                            />
+                          </EnchainementsSessionProvider>
+                        </RelierSessionProvider>
+                      </StudyProvider>
+                    </ManuelProvider>
+                  </DictionnaireProvider>
+                </ChronologieProvider>
+              </EnchainementsProvider>
+            </RelierDicoProvider>
+          </RelierProvider>
+        </FlipcardsDicoProvider>
       </CardsProvider>
     </AuthProvider>
   );

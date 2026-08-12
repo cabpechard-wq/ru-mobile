@@ -1,13 +1,16 @@
 # Les Ressources Universitaires — app mobile (Expo)
 
-Flipcards jurisprudence + exercices (Relier, Enchaînements) + registres Cours
-(Manuel, Chronologie, Dictionnaire). Parcours : Accueil → Exercices / Cours /
-Étudier.
+Même structure que le site : Cours magistral, Bibliothèque universitaire,
+Salle de TD (Flipcards / Relations / Enchaînements).
 
 Les données sont récupérées en direct (HTTPS) depuis le site publié
-(`src/data/config.ts`) — connexion nécessaire à chaque lancement, aucune
-donnée embarquée. Démo publique sans compte ; contenu membre via SSO
-(mêmes identifiants que le site, Worker `/api/login` + Bearer).
+(`src/data/config.ts`) — connexion nécessaire à chaque lancement pour les
+fonds principaux. Démo publique sans compte ; contenu membre via SSO
+(mêmes identifiants que le site).
+
+Exception temporaire : démos « Grandes notions » (Flipcards / Relations)
+extraites dans `assets/demo/` tant que `ru-public` n'expose pas encore
+`demo-flipcards-dico/cards.json` et `demo-relier-dico/cards.json`.
 
 ## Prérequis
 

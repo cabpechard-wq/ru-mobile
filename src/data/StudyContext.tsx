@@ -4,6 +4,8 @@ import { Card } from "./cards";
 type Session = {
   cards: Card[];
   hint: string;
+  /** Ids de la sélection courante (pour « N au hasard » hors sélection). */
+  selectedIds?: string[];
 };
 
 type StudyContextValue = {

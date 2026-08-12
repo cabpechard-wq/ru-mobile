@@ -38,7 +38,7 @@ export default function EnchainementsSetupScreen() {
           <Pressable onPress={() => router.back()} style={styles.back}>
             <Text style={styles.backText}>← Accueil</Text>
           </Pressable>
-          <Text style={styles.title}>Enchaînements logiques</Text>
+          <Text style={styles.title}>Enchaînements (chrono)logiques</Text>
           <Text style={styles.sub}>
             Remettez un enchaînement de décisions liées dans l'ordre
             chronologique — dates cachées.
