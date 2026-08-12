@@ -22,8 +22,8 @@ export type Card = {
 export type FlipcardsData = {
   kind: string;
   count: number;
-  recto_field: string;
-  verso_field: string;
+  recto_field?: string;
+  verso_field?: string;
   classifiers: {
     theme_field: string;
     notions_field: string;

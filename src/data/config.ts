@@ -4,6 +4,7 @@
  */
 export const SITE_BASE_URL = "https://www.ressources-universitaires.fr";
 export const DEMO_CARDS_ENDPOINT = `${SITE_BASE_URL}/demo/cards.json`;
+export const DEMO_RELIER_ENDPOINT = `${SITE_BASE_URL}/demo-relier/cards.json`;
 
 /**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
@@ -11,5 +12,6 @@ export const DEMO_CARDS_ENDPOINT = `${SITE_BASE_URL}/demo/cards.json`;
  */
 export const AUTH_API_BASE_URL = "https://flipcards-auth.cab-pechard.workers.dev";
 export const MEMBER_CARDS_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/flipcards?format=json`;
+export const MEMBER_RELIER_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/relier?format=json`;
 
 export const PAGE_TITLE = "Grands arrêts du droit public et administratif";
