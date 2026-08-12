@@ -3,6 +3,8 @@ import { StatusBar } from "expo-status-bar";
 import React from "react";
 import { AuthProvider } from "../src/data/AuthContext";
 import { CardsProvider } from "../src/data/CardsProvider";
+import { EnchainementsProvider } from "../src/data/EnchainementsProvider";
+import { EnchainementsSessionProvider } from "../src/data/EnchainementsSessionContext";
 import { RelierProvider } from "../src/data/RelierProvider";
 import { RelierSessionProvider } from "../src/data/RelierSessionContext";
 import { StudyProvider } from "../src/data/StudyContext";
@@ -13,18 +15,22 @@ export default function RootLayout() {
     <AuthProvider>
       <CardsProvider>
         <RelierProvider>
-          <StudyProvider>
-            <RelierSessionProvider>
-              <StatusBar style="dark" />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.bg },
-                  animation: "slide_from_right",
-                }}
-              />
-            </RelierSessionProvider>
-          </StudyProvider>
+          <EnchainementsProvider>
+            <StudyProvider>
+              <RelierSessionProvider>
+                <EnchainementsSessionProvider>
+                  <StatusBar style="dark" />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: colors.bg },
+                      animation: "slide_from_right",
+                    }}
+                  />
+                </EnchainementsSessionProvider>
+              </RelierSessionProvider>
+            </StudyProvider>
+          </EnchainementsProvider>
         </RelierProvider>
       </CardsProvider>
     </AuthProvider>

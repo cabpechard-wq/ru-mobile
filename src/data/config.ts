@@ -5,6 +5,15 @@
 export const SITE_BASE_URL = "https://www.ressources-universitaires.fr";
 export const DEMO_CARDS_ENDPOINT = `${SITE_BASE_URL}/demo/cards.json`;
 export const DEMO_RELIER_ENDPOINT = `${SITE_BASE_URL}/demo-relier/cards.json`;
+export const DEMO_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/demo-enchainements-logiques/data/chronology-decisions-demo.json`;
+/**
+ * Pas de Worker ici : contrairement à flipcards/relier, ce fonds n'est pas
+ * scellé (pas d'entrée dans CONTENT_PACKS côté Worker) — juste un JSON
+ * public non répertorié, comme sur le site. Le login ne fait que
+ * choisir quelle URL utiliser, il n'apporte pas de contrôle d'accès
+ * supplémentaire ici (fidèle à la posture actuelle du site).
+ */
+export const MEMBER_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/enchainements-logiques/data/chronology-decisions.json`;
 
 /**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié

@@ -87,9 +87,14 @@ function HomeContent({
         {source === "demo" ? " · démo" : ""}).
       </Text>
 
-      <Pressable onPress={() => router.push("/relier")} style={styles.exerciseLink}>
-        <Text style={styles.exerciseLinkText}>Autre exercice : Relier →</Text>
-      </Pressable>
+      <View style={styles.exerciseLinks}>
+        <Pressable onPress={() => router.push("/relier")}>
+          <Text style={styles.exerciseLinkText}>Relier →</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push("/enchainements")}>
+          <Text style={styles.exerciseLinkText}>Enchaînements logiques →</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.card}>
         <Accordion
@@ -250,7 +255,7 @@ const styles = StyleSheet.create({
   },
   accountText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
   accountAction: { color: colors.accent, fontSize: 12, fontWeight: "700" },
-  exerciseLink: { marginBottom: 14 },
+  exerciseLinks: { flexDirection: "row", gap: 16, marginBottom: 14 },
   exerciseLinkText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
   scroll: { padding: 16, paddingBottom: 40 },
   title: {
