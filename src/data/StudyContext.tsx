@@ -6,6 +6,8 @@ type Session = {
   hint: string;
   /** Ids de la sélection courante (pour « N au hasard » hors sélection). */
   selectedIds?: string[];
+  /** Pack Flipcards : arrêts (suggestions Chronologie) ou notions (Dictionnaire). */
+  pack?: "arrets" | "notions";
 };
 
 type StudyContextValue = {

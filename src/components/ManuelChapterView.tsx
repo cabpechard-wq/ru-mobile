@@ -12,8 +12,10 @@ import { useDictionnaireData } from "../data/DictionnaireProvider";
 import { useManuelData } from "../data/ManuelProvider";
 import { breadcrumb } from "../data/manuel";
 import { neighborsForChapter } from "../data/manuelNav";
+import { SECTION } from "../data/sections";
 import { colors } from "../theme/colors";
 import { ErrorScreen, LoadingScreen } from "./DataStatus";
+import { PageHeader } from "./PageHeader";
 import { Prose, type ProseLinkHandler } from "./Prose";
 
 export function ManuelChapterView({
@@ -37,9 +39,12 @@ export function ManuelChapterView({
   const chapter = resolvedId ? state.chapters.get(resolvedId) : undefined;
   if (!chapter) {
     return (
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.empty}>Chapitre introuvable.</Text>
-      </ScrollView>
+      <View style={styles.wrap}>
+        <PageHeader trail={[SECTION.manuel]} />
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <Text style={styles.empty}>Chapitre introuvable.</Text>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -71,12 +76,16 @@ export function ManuelChapterView({
     }
   };
 
+  const crumbTrail = [
+    SECTION.manuel,
+    ...trail.slice(0, -1).map((c) => c.title),
+    chapter.title,
+  ];
+
   return (
     <View style={styles.wrap}>
+      <PageHeader trail={crumbTrail} />
       <View style={styles.stickyBar}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>← {isRoot ? "Accueil" : "Retour"}</Text>
-        </Pressable>
         <Text style={styles.stickyTitle} numberOfLines={2}>
           {chapter.title}
         </Text>
@@ -94,7 +103,11 @@ export function ManuelChapterView({
           <Pressable
             disabled={!next}
             onPress={() => next && router.push(`/manuel/${next.id}`)}
-            style={[styles.chapNavBtn, styles.chapNavNext, !next && styles.chapNavDisabled]}
+            style={[
+              styles.chapNavBtn,
+              styles.chapNavNext,
+              !next && styles.chapNavDisabled,
+            ]}
           >
             <Text style={styles.chapNavLabel} numberOfLines={1}>
               chap. suivant
@@ -105,18 +118,9 @@ export function ManuelChapterView({
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {trail.length > 1 ? (
-          <Text style={styles.crumb} numberOfLines={2}>
-            {trail
-              .slice(0, -1)
-              .map((c) => c.title)
-              .join(" › ")}
-          </Text>
-        ) : null}
-
         {chapter.blocks.length ? (
           <View style={styles.prose}>
-            <Prose blocks={chapter.blocks} onLink={onLink} />
+            <Prose blocks={chapter.blocks} onLink={onLink} collapsible />
           </View>
         ) : null}
 
@@ -157,8 +161,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     gap: 6,
   },
-  backBtn: { alignSelf: "flex-start" },
-  backText: { color: colors.accent, fontWeight: "600" },
   stickyTitle: {
     fontFamily: "serif",
     fontSize: 18,
@@ -181,9 +183,13 @@ const styles = StyleSheet.create({
   chapNavNext: { justifyContent: "flex-end" },
   chapNavDisabled: { opacity: 0.35 },
   chapNavArrow: { color: colors.accent, fontWeight: "700", fontSize: 18 },
-  chapNavLabel: { color: colors.ink, fontWeight: "600", fontSize: 12, flexShrink: 1 },
+  chapNavLabel: {
+    color: colors.ink,
+    fontWeight: "600",
+    fontSize: 12,
+    flexShrink: 1,
+  },
   scroll: { padding: 16, paddingBottom: 48 },
-  crumb: { color: colors.muted, fontSize: 12, marginBottom: 10 },
   prose: { marginTop: 4 },
   children: { marginTop: 16, gap: 8 },
   childrenTitle: {
@@ -205,7 +211,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
-  childTitle: { color: colors.ink, fontWeight: "600", fontSize: 14, flexShrink: 1 },
+  childTitle: {
+    color: colors.ink,
+    fontWeight: "600",
+    fontSize: 14,
+    flexShrink: 1,
+  },
   childChevron: { color: colors.muted, fontSize: 16 },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
 });

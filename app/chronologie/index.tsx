@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { Chip } from "../../src/components/Chip";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { themeLabel, uniqueSorted } from "../../src/data/arrets";
 import {
   buildById,
@@ -24,6 +25,7 @@ import {
 } from "../../src/data/chronologie";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { displayNom, starsLabel, type Decision } from "../../src/data/decisions";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 function DecisionRow({
@@ -122,6 +124,7 @@ export default function ChronologieListScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.chronologie]} />
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -145,9 +148,6 @@ export default function ChronologieListScreen() {
       ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
-            <Text style={styles.backText}>← Accueil</Text>
-          </Pressable>
           <Text style={styles.title}>Chronologie</Text>
           <Text style={styles.sub}>
             {filtered.length} / {state.decisions.length} décisions
@@ -365,8 +365,6 @@ const styles = StyleSheet.create({
   },
   btnText: { color: "#fff", fontWeight: "700" },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 26,
     fontWeight: "700",

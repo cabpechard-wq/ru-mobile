@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageHeader } from "../../src/components/PageHeader";
 import {
   displayNom,
   formatDateFr,
@@ -9,6 +10,7 @@ import {
   type Decision,
 } from "../../src/data/enchainements";
 import { useEnchainementsSession } from "../../src/data/EnchainementsSessionContext";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function EnchainementsSessionScreen() {
@@ -50,9 +52,7 @@ export default function EnchainementsSessionScreen() {
   if (!initial.length) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[SECTION.enchainements, "Exercice"]} />
         <Text style={styles.empty}>Aucun enchaînement en cours.</Text>
       </SafeAreaView>
     );
@@ -60,14 +60,15 @@ export default function EnchainementsSessionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader
+        trail={[SECTION.enchainements, "Exercice"]}
+        right={
+          <Text style={styles.summary} numberOfLines={1}>
+            Ordre chronologique ?
+          </Text>
+        }
+      />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.bar}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.backText}>← Retour</Text>
-          </Pressable>
-          <Text style={styles.summary}>Ordre chronologique ?</Text>
-        </View>
-
         {checked ? (
           <View style={[styles.scoreBanner, revealed && styles.scoreBannerRevealed]}>
             <Text style={styles.scoreText}>
@@ -162,14 +163,7 @@ export default function EnchainementsSessionScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  backText: { color: colors.accent, fontWeight: "600" },
-  summary: { color: colors.muted, fontSize: 13, fontWeight: "600" },
+  summary: { color: colors.muted, fontSize: 12, fontWeight: "600", textAlign: "right" },
   scoreBanner: {
     backgroundColor: colors.accentSoft,
     borderRadius: colors.radius,

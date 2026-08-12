@@ -5,10 +5,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { PAGE_TITLE_NOTIONS } from "../../src/data/config";
 import { useRelierDicoData } from "../../src/data/RelierDicoProvider";
 import { filterRelierItems, pickBatch } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 const BATCH_SIZES = [3, 5, 10];
@@ -28,7 +30,7 @@ export default function RelierNotionsSetupScreen() {
 
   const start = (size: number) => {
     if (filteredItems.length < 2) return;
-    setSession({ items: pickBatch(filteredItems, size) });
+    setSession({ items: pickBatch(filteredItems, size), pack: "notions" });
     router.push("/relier/session");
   };
 
@@ -39,15 +41,13 @@ export default function RelierNotionsSetupScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.relationsNotions]} />
       {relierState.status === "loading" ? <LoadingScreen /> : null}
       {relierState.status === "error" ? (
         <ErrorScreen message={relierState.message} onRetry={relierState.reload} />
       ) : null}
       {relierState.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
-            <Text style={styles.backText}>← Accueil</Text>
-          </Pressable>
           <Text style={styles.kicker}>Relations</Text>
           <Text style={styles.title}>Relations — Grandes notions</Text>
           <Text style={styles.sub}>
@@ -108,8 +108,6 @@ export default function RelierNotionsSetupScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   kicker: {
     fontSize: 10,
     fontWeight: "700",

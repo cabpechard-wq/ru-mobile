@@ -10,9 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { buildById, directRelations, relatedCluster } from "../../src/data/chronologie";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { formatDateFr, starsLabel, type Decision } from "../../src/data/decisions";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 function Section({ title, text }: { title: string; text?: string }) {
@@ -39,6 +41,7 @@ export default function DecisionFicheScreen() {
   if (state.status === "loading") {
     return (
       <SafeAreaView style={styles.safe}>
+        <PageHeader trail={[SECTION.chronologie]} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
@@ -48,6 +51,7 @@ export default function DecisionFicheScreen() {
   if (state.status === "error") {
     return (
       <SafeAreaView style={styles.safe}>
+        <PageHeader trail={[SECTION.chronologie]} />
         <ErrorScreen message={state.message} onRetry={state.reload} />
       </SafeAreaView>
     );
@@ -55,6 +59,7 @@ export default function DecisionFicheScreen() {
   if (state.status === "idle-full") {
     return (
       <SafeAreaView style={styles.safe}>
+        <PageHeader trail={[SECTION.chronologie]} />
         <View style={styles.center}>
           <Text style={styles.centerTitle}>Fonds Chronologie non chargé</Text>
           <Text style={styles.centerText}>
@@ -70,9 +75,7 @@ export default function DecisionFicheScreen() {
   if (!decision) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[SECTION.chronologie]} />
         <Text style={styles.empty}>
           Décision introuvable dans le jeu chargé actuellement (démo).
         </Text>
@@ -85,11 +88,8 @@ export default function DecisionFicheScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.chronologie, decision.nom]} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
-
         <Text style={styles.title}>{decision.nom}</Text>
         <View style={styles.metaRow}>
           <Text style={styles.metaTag}>{formatDateFr(decision.date)}</Text>
@@ -182,8 +182,6 @@ export default function DecisionFicheScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 22,
     fontWeight: "700",

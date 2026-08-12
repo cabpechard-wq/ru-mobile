@@ -3,9 +3,11 @@ import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { useEnchainementsData } from "../../src/data/EnchainementsProvider";
 import { useEnchainementsSession } from "../../src/data/EnchainementsSessionContext";
 import { displayNom, pickRandomChain, shuffledOrder, type Decision } from "../../src/data/enchainements";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function EnchainementsSetupScreen() {
@@ -29,15 +31,13 @@ export default function EnchainementsSetupScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.enchainements]} />
       {state.status === "loading" ? <LoadingScreen /> : null}
       {state.status === "error" ? (
         <ErrorScreen message={state.message} onRetry={state.reload} />
       ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
-            <Text style={styles.backText}>← Accueil</Text>
-          </Pressable>
           <Text style={styles.title}>Enchaînements (chrono)logiques</Text>
           <Text style={styles.sub}>
             Remettez un enchaînement de décisions liées dans l'ordre
@@ -85,8 +85,6 @@ export default function EnchainementsSetupScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 26,
     fontWeight: "700",

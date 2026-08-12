@@ -9,14 +9,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlipCard } from "../src/components/FlipCard";
+import { PageHeader } from "../src/components/PageHeader";
 import { pickAsideRandom } from "../src/data/arrets";
 import { ASIDE_RANDOM_COUNT } from "../src/data/config";
 import { useCardsData } from "../src/data/CardsProvider";
 import { useChronologieData } from "../src/data/ChronologieProvider";
 import { cardImportanceLevel, starsLabel, type Card } from "../src/data/cards";
 import { displayNom, type Decision } from "../src/data/decisions";
+import { useDictionnaireData } from "../src/data/DictionnaireProvider";
+import { SECTION } from "../src/data/sections";
 import { useStudySession } from "../src/data/StudyContext";
-import { colors, notionTone } from "../src/theme/colors";
+import { colors } from "../src/theme/colors";
 
 const PLAY_RECTO_MS = 3000;
 const PLAY_VERSO_MS = 7000;
@@ -42,23 +45,6 @@ function DetailBox({ title, text }: { title: string; text?: string }) {
   );
 }
 
-function ColoredTag({
-  label,
-  group,
-  colorForLabel,
-}: {
-  label: string;
-  group: "theme" | "notion";
-  colorForLabel: (label: string, group: "theme" | "notion") => string;
-}) {
-  const tone = notionTone(colorForLabel(label, group));
-  return (
-    <Text style={[styles.tag, { borderColor: tone.border, color: colors.muted }]}>
-      {label}
-    </Text>
-  );
-}
-
 function cardKey(c: Card): string {
   return c.id || c.recto;
 }
@@ -68,10 +54,10 @@ export default function StudyScreen() {
   const { session } = useStudySession();
   const cardsState = useCardsData();
   const chrono = useChronologieData();
-  const colorForLabel =
-    cardsState.status === "ready"
-      ? cardsState.data.colorForLabel
-      : () => "default";
+  const dico = useDictionnaireData();
+  const pack = session.pack || "arrets";
+  const sectionLabel =
+    pack === "notions" ? SECTION.flipcardsNotions : SECTION.flipcardsArrets;
   const base = session.cards;
   const selectedIds = useMemo(() => {
     if (session.selectedIds?.length) return new Set(session.selectedIds);
@@ -118,27 +104,56 @@ export default function StudyScreen() {
   cardsLenRef.current = cards.length;
   const current = cards[index];
 
-  /** Pool pour « N au hasard » : fonds Chronologie si dispo, sinon le set Flipcards. */
-  const asidePool: { id: string; label: string }[] = useMemo(() => {
+  /** Pool « N au hasard » : Chronologie (arrêts) ou Dictionnaire (notions). */
+  const asidePool: { id: string; label: string; href: string }[] = useMemo(() => {
+    if (pack === "notions") {
+      if (dico.status !== "ready") return [];
+      return dico.entries.map((e) => ({
+        id: e.id,
+        label: e.term,
+        href: `/dictionnaire/${e.id}`,
+      }));
+    }
     if (chrono.status === "ready") {
       return chrono.decisions.map((d: Decision) => ({
         id: d.id,
         label: displayNom(d.nom, true),
+        href: `/arrets/${d.id}`,
       }));
     }
     if (cardsState.status === "ready") {
       return cardsState.data.allCards.map((c) => ({
         id: cardKey(c),
         label: c.recto,
+        href: `/arrets/${cardKey(c)}`,
       }));
     }
     return [];
-  }, [chrono, cardsState]);
+  }, [pack, chrono, cardsState, dico]);
 
   const asideItems = useMemo(() => {
     void asideTick;
+    const selected =
+      pack === "notions"
+        ? new Set(
+            base.map((c) => (c.recto || "").toLowerCase()).filter(Boolean)
+          )
+        : selectedIds;
+    // Pour notions : exclure les termes déjà dans la sélection d'étude (par label).
+    if (pack === "notions") {
+      const outside = asidePool.filter(
+        (d) => !selected.has(d.label.toLowerCase())
+      );
+      if (outside.length < ASIDE_RANDOM_COUNT) return [];
+      const out = [...outside];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out.slice(0, ASIDE_RANDOM_COUNT);
+    }
     return pickAsideRandom(asidePool, selectedIds, ASIDE_RANDOM_COUNT);
-  }, [asidePool, selectedIds, asideTick]);
+  }, [asidePool, selectedIds, asideTick, pack, base]);
 
   const stopPlay = () => {
     setPlaying(false);
@@ -199,18 +214,12 @@ export default function StudyScreen() {
   };
 
   const ficheId = current ? cardKey(current) : "";
-  const hasFiche =
-    !!ficheId &&
-    (chrono.status === "ready"
-      ? chrono.decisions.some((d) => d.id === ficheId || d.slugFiche === ficheId)
-      : chrono.status === "idle-full" || chrono.status === "loading");
+  const showFicheLink = pack === "arrets" && !!ficheId;
 
   if (!base.length || !current) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[sectionLabel, "Étudier"]} />
         <Text style={styles.empty}>Aucune carte pour ces filtres.</Text>
       </SafeAreaView>
     );
@@ -218,21 +227,15 @@ export default function StudyScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.bar}>
-          <Pressable
-            onPress={() => {
-              stopPlay();
-              router.back();
-            }}
-          >
-            <Text style={styles.backText}>← Retour</Text>
-          </Pressable>
+      <PageHeader
+        trail={[sectionLabel, "Étudier"]}
+        right={
           <Text style={styles.summary} numberOfLines={2}>
             {session.hint}
           </Text>
-        </View>
-
+        }
+      />
+      <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.progressTrack}>
           <View
             style={[
@@ -250,7 +253,7 @@ export default function StudyScreen() {
           stars={starsLabel(cardImportanceLevel(current))}
         />
 
-        {hasFiche || ficheId ? (
+        {showFicheLink ? (
           <Pressable
             testID="open-fiche"
             onPress={() => router.push(`/arrets/${ficheId}`)}
@@ -307,25 +310,58 @@ export default function StudyScreen() {
           <View style={[styles.side, styles.sideRight]} />
         </View>
 
+        {pack === "arrets" ? (
+          <>
+            <Pressable
+              onPress={() => setDetailsOpen((v) => !v)}
+              style={[styles.detailsBtn, detailsOpen && styles.detailsBtnActive]}
+              accessibilityState={{ expanded: detailsOpen }}
+            >
+              <Text
+                style={[
+                  styles.detailsBtnText,
+                  detailsOpen && styles.detailsBtnTextActive,
+                ]}
+              >
+                Objet · Portée · Considérant
+              </Text>
+            </Pressable>
+
+            {detailsOpen ? (
+              <View style={styles.details}>
+                <DetailBox title="Objet" text={current.objet} />
+                <DetailBox title="Portée" text={current.portee} />
+                <DetailBox
+                  title="Considérant de principe"
+                  text={current.considerant}
+                />
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
         {asideItems.length === ASIDE_RANDOM_COUNT ? (
           <View style={styles.aside}>
             <View style={styles.asideHead}>
               <Text style={styles.asideTitle}>
-                {ASIDE_RANDOM_COUNT} au hasard
+                {pack === "notions"
+                  ? `${ASIDE_RANDOM_COUNT} notions au hasard`
+                  : `${ASIDE_RANDOM_COUNT} au hasard`}
               </Text>
               <Pressable onPress={() => setAsideTick((n) => n + 1)}>
                 <Text style={styles.asideRefresh}>Autres</Text>
               </Pressable>
             </View>
             <Text style={styles.asideHint}>
-              Hors sélection ({asidePool.length - selectedIds.size} disponibles
-              sur {asidePool.length}).
+              {pack === "notions"
+                ? "Tirées du Dictionnaire, hors sélection."
+                : `Hors sélection (${asidePool.length - selectedIds.size} / ${asidePool.length}).`}
             </Text>
             {asideItems.map((item) => (
               <Pressable
                 key={item.id}
                 style={styles.asideRow}
-                onPress={() => router.push(`/arrets/${item.id}`)}
+                onPress={() => router.push(item.href as never)}
               >
                 <Text style={styles.asideRowText} numberOfLines={2}>
                   {item.label}
@@ -334,63 +370,6 @@ export default function StudyScreen() {
             ))}
           </View>
         ) : null}
-
-        <Pressable
-          onPress={() => setDetailsOpen((v) => !v)}
-          style={[styles.detailsBtn, detailsOpen && styles.detailsBtnActive]}
-          accessibilityState={{ expanded: detailsOpen }}
-        >
-          <Text
-            style={[
-              styles.detailsBtnText,
-              detailsOpen && styles.detailsBtnTextActive,
-            ]}
-          >
-            Objet · Portée · Considérant
-          </Text>
-        </Pressable>
-
-        {detailsOpen ? (
-          <View style={styles.details}>
-            <DetailBox title="Objet" text={current.objet} />
-            <DetailBox title="Portée" text={current.portee} />
-            <DetailBox title="Considérant de principe" text={current.considerant} />
-          </View>
-        ) : null}
-
-        <View style={styles.list}>
-          {cards.map((c) => (
-            <View key={cardKey(c)} style={styles.row}>
-              <View style={styles.rowLeft}>
-                <Text style={styles.rowTitle}>{c.recto}</Text>
-                <View style={styles.tags}>
-                  {starsLabel(cardImportanceLevel(c)) ? (
-                    <Text style={styles.rowStars}>
-                      {starsLabel(cardImportanceLevel(c))}
-                    </Text>
-                  ) : null}
-                  {(c.themes || []).map((t) => (
-                    <ColoredTag
-                      key={`t-${t}`}
-                      label={t}
-                      group="theme"
-                      colorForLabel={colorForLabel}
-                    />
-                  ))}
-                  {(c.notions || []).map((n) => (
-                    <ColoredTag
-                      key={`n-${n}`}
-                      label={n}
-                      group="notion"
-                      colorForLabel={colorForLabel}
-                    />
-                  ))}
-                </View>
-              </View>
-              <Text style={styles.rowVerso}>{c.verso || "—"}</Text>
-            </View>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -405,20 +384,11 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "center",
   },
-  bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 14,
-  },
-  backText: { fontWeight: "600", color: colors.accent, fontSize: 14 },
   summary: {
-    flex: 1,
-    textAlign: "right",
     color: colors.muted,
     fontWeight: "500",
-    fontSize: 13,
+    fontSize: 11,
+    textAlign: "right",
   },
   progressTrack: {
     height: 2,
@@ -463,32 +433,9 @@ const styles = StyleSheet.create({
     minWidth: 64,
     textAlign: "center",
   },
-  aside: {
-    marginTop: 18,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: colors.radius,
-    backgroundColor: colors.card,
-    padding: 12,
-    gap: 6,
-  },
-  asideHead: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  asideTitle: { fontWeight: "700", color: colors.ink, fontSize: 14 },
-  asideRefresh: { color: colors.accent, fontWeight: "700", fontSize: 12 },
-  asideHint: { color: colors.muted, fontSize: 11, marginBottom: 4 },
-  asideRow: {
-    paddingVertical: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  asideRowText: { color: colors.accent, fontWeight: "600", fontSize: 13 },
   detailsBtn: {
     alignSelf: "center",
-    marginTop: 12,
+    marginTop: 14,
     borderWidth: 2,
     borderColor: "#d1d5db",
     backgroundColor: "#fff",
@@ -522,43 +469,29 @@ const styles = StyleSheet.create({
   },
   detailText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
   detailEmpty: { color: colors.muted, fontStyle: "italic" },
-  list: { marginTop: 28, gap: 8 },
-  row: {
-    backgroundColor: colors.card,
+  aside: {
+    marginTop: 18,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
     borderRadius: colors.radius,
-    padding: 14,
-    gap: 10,
+    backgroundColor: colors.card,
+    padding: 12,
+    gap: 6,
   },
-  rowLeft: { gap: 6 },
-  rowTitle: {
-    fontWeight: "700",
-    color: colors.ink,
-    fontSize: 16,
-    fontFamily: "serif",
+  asideHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 4, alignItems: "center" },
-  rowStars: {
-    fontSize: 12,
-    letterSpacing: 1,
-    color: colors.accent,
-    fontWeight: "700",
-    marginRight: 2,
+  asideTitle: { fontWeight: "700", color: colors.ink, fontSize: 14 },
+  asideRefresh: { color: colors.accent, fontWeight: "700", fontSize: 12 },
+  asideHint: { color: colors.muted, fontSize: 11, marginBottom: 4 },
+  asideRow: {
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  tag: {
-    fontSize: 11,
-    fontWeight: "600",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 2,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-  },
-  rowVerso: { color: "#4b5563", lineHeight: 20, fontSize: 14 },
+  asideRowText: { color: colors.accent, fontWeight: "600", fontSize: 13 },
   empty: {
     marginTop: 40,
     textAlign: "center",

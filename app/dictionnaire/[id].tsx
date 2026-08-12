@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageHeader } from "../../src/components/PageHeader";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
 import { useManuelData } from "../../src/data/ManuelProvider";
@@ -9,6 +10,7 @@ import {
   chapterIdFromManuelPath,
   splitCoursLinks,
 } from "../../src/data/dictionnaire";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function DictionnaireEntryScreen() {
@@ -33,9 +35,7 @@ export default function DictionnaireEntryScreen() {
   if (state.status !== "ready" || !entry) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[SECTION.dictionnaire]} />
         <Text style={styles.empty}>
           {state.status === "loading" ? "Chargement…" : "Terme introuvable."}
         </Text>
@@ -47,10 +47,8 @@ export default function DictionnaireEntryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.dictionnaire, entry.term]} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
         <Text style={styles.term}>{entry.term}</Text>
         <Text style={styles.def}>{entry.definition}</Text>
 
@@ -108,8 +106,6 @@ export default function DictionnaireEntryScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   term: {
     fontSize: 22,
     fontWeight: "700",

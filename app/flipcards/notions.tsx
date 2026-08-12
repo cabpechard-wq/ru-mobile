@@ -11,9 +11,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { type Card } from "../../src/data/cards";
 import { PAGE_TITLE_NOTIONS } from "../../src/data/config";
 import { useFlipcardsDicoData } from "../../src/data/FlipcardsDicoProvider";
+import { SECTION } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
 import { useFilters } from "../../src/hooks/useFilters";
 import { colors } from "../../src/theme/colors";
@@ -62,7 +64,12 @@ function FlipcardsNotionsContent({
 
   const enterStudy = (cards: Card[], hint: string) => {
     if (!cards.length) return;
-    setSession({ cards, hint, selectedIds: cards.map((c) => c.id || c.recto) });
+    setSession({
+      cards,
+      hint,
+      selectedIds: cards.map((c) => c.id || c.recto),
+      pack: "notions",
+    });
     router.push("/study");
   };
 
@@ -83,9 +90,6 @@ function FlipcardsNotionsContent({
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <Pressable onPress={() => router.back()} style={styles.back}>
-        <Text style={styles.backText}>← Accueil</Text>
-      </Pressable>
       <Text style={styles.kicker}>Flipcards</Text>
       <Text style={styles.title}>{PAGE_TITLE_NOTIONS}</Text>
       <Text style={styles.sub}>
@@ -182,6 +186,7 @@ export default function FlipcardsNotionsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.flipcardsNotions]} />
       {cardsState.status === "loading" ? <LoadingScreen /> : null}
       {cardsState.status === "error" ? (
         <ErrorScreen message={cardsState.message} onRetry={cardsState.reload} />
@@ -203,8 +208,6 @@ export default function FlipcardsNotionsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   kicker: {
     fontSize: 10,
     fontWeight: "700",

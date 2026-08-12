@@ -11,9 +11,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { useCardsData } from "../../src/data/CardsProvider";
 import { PAGE_TITLE } from "../../src/data/config";
 import { type Card } from "../../src/data/cards";
+import { SECTION } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
 import { useFilters } from "../../src/hooks/useFilters";
 import { colors } from "../../src/theme/colors";
@@ -62,7 +64,12 @@ function FlipcardsContent({
 
   const enterStudy = (cards: Card[], hint: string) => {
     if (!cards.length) return;
-    setSession({ cards, hint, selectedIds: cards.map((c) => c.id || c.recto) });
+    setSession({
+      cards,
+      hint,
+      selectedIds: cards.map((c) => c.id || c.recto),
+      pack: "arrets",
+    });
     router.push("/study");
   };
 
@@ -83,9 +90,6 @@ function FlipcardsContent({
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <Pressable onPress={() => router.back()} style={styles.back}>
-        <Text style={styles.backText}>← Accueil</Text>
-      </Pressable>
       <Text style={styles.kicker}>Flipcards</Text>
       <Text style={styles.title}>{PAGE_TITLE}</Text>
       <Text style={styles.sub}>
@@ -185,6 +189,7 @@ export default function FlipcardsGrandsArretsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.flipcardsArrets]} />
       {cardsState.status === "loading" ? <LoadingScreen /> : null}
       {cardsState.status === "error" ? (
         <ErrorScreen message={cardsState.message} onRetry={cardsState.reload} />
@@ -206,8 +211,6 @@ export default function FlipcardsGrandsArretsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   kicker: {
     fontSize: 10,
     fontWeight: "700",

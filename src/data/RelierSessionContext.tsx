@@ -3,6 +3,8 @@ import { type RelierItem } from "./relier";
 
 type RelierSession = {
   items: RelierItem[];
+  /** Pack Relations : arrêts ou notions (fil d'Ariane session). */
+  pack?: "arrets" | "notions";
 };
 
 type RelierSessionContextValue = {

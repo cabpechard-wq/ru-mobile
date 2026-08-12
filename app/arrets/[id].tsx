@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
@@ -10,16 +10,31 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
+import { useCardsData } from "../../src/data/CardsProvider";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { formatDateFr, starsLabel, type Decision } from "../../src/data/decisions";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
-function Section({ title, text }: { title: string; text?: string }) {
-  if (!text) return null;
+/** Synthèse (Objet / Portée / Considérant) — mise en avant. */
+function HighlightSection({ title, text }: { title: string; text?: string }) {
+  if (!(text || "").trim()) return null;
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionText}>{text}</Text>
+    <View style={styles.highlight}>
+      <Text style={styles.highlightTitle}>{title}</Text>
+      <Text style={styles.highlightText}>{text}</Text>
+    </View>
+  );
+}
+
+/** Corps de fiche (Faits / Enjeu / Solution / Perspective). */
+function BodySection({ title, text }: { title: string; text?: string }) {
+  if (!(text || "").trim()) return null;
+  return (
+    <View style={styles.bodySection}>
+      <Text style={styles.bodyTitle}>{title}</Text>
+      <Text style={styles.bodyText}>{text}</Text>
     </View>
   );
 }
@@ -32,18 +47,30 @@ function findDecision(decisions: Decision[], id: string): Decision | undefined {
 }
 
 export default function ArretFicheScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useChronologieData();
+  const cards = useCardsData();
 
   const decision = useMemo(() => {
     if (state.status !== "ready" || !id) return undefined;
     return findDecision(state.decisions, id);
   }, [state, id]);
 
+  const considerant = useMemo(() => {
+    if (!decision) return undefined;
+    if (cards.status === "ready") {
+      const fromCards = cards.data.allCards.find(
+        (c) => c.id === decision.id || c.recto === decision.nom
+      )?.considerant;
+      if ((fromCards || "").trim()) return fromCards;
+    }
+    return undefined;
+  }, [decision, cards]);
+
   if (state.status === "loading") {
     return (
       <SafeAreaView style={styles.safe}>
+        <PageHeader trail={[SECTION.arrets]} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
@@ -53,6 +80,7 @@ export default function ArretFicheScreen() {
   if (state.status === "error") {
     return (
       <SafeAreaView style={styles.safe}>
+        <PageHeader trail={[SECTION.arrets]} />
         <ErrorScreen message={state.message} onRetry={state.reload} />
       </SafeAreaView>
     );
@@ -60,10 +88,11 @@ export default function ArretFicheScreen() {
   if (state.status === "idle-full") {
     return (
       <SafeAreaView style={styles.safe}>
+        <PageHeader trail={[SECTION.arrets]} />
         <View style={styles.center}>
-          <Text style={styles.centerTitle}>Fonds Chronologie non chargé</Text>
+          <Text style={styles.centerTitle}>Fonds non chargé</Text>
           <Text style={styles.centerText}>
-            Cette fiche fait partie du fonds complet (995 décisions, ~3 Mo).
+            Cette fiche fait partie du fonds complet (~3 Mo).
           </Text>
           <Pressable style={styles.btn} onPress={state.loadFull}>
             <Text style={styles.btnText}>Charger le fonds complet</Text>
@@ -75,9 +104,7 @@ export default function ArretFicheScreen() {
   if (!decision) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[SECTION.arrets]} />
         <Text style={styles.empty}>
           Fiche introuvable dans le jeu chargé actuellement (démo).
         </Text>
@@ -93,11 +120,8 @@ export default function ArretFicheScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.arrets, decision.nom]} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
-
         <Text style={styles.title}>{decision.nom}</Text>
         <View style={styles.metaRow}>
           {starsLabel(decision.importance) ? (
@@ -112,20 +136,16 @@ export default function ArretFicheScreen() {
           ))}
         </View>
 
-        <Section title="Objet" text={decision.objet} />
-        <Section title="Portée" text={decision.portee} />
-        <Section title="Faits" text={decision.faits} />
-        <Section title="Enjeu" text={decision.enjeu} />
-        <Section title="Solution" text={decision.solution} />
-        <Section title="Perspective" text={decision.perspective} />
+        <HighlightSection title="Objet" text={decision.objet} />
+        <HighlightSection title="Portée" text={decision.portee} />
+        <HighlightSection title="Considérant de principe" text={considerant} />
 
-        <Pressable
-          testID="voir-chronologie"
-          style={styles.linkBtn}
-          onPress={() => router.push(`/chronologie/${decision.id}` as never)}
-        >
-          <Text style={styles.linkBtnText}>Voir dans la Chronologie</Text>
-        </Pressable>
+        <View style={styles.bodyBlock}>
+          <BodySection title="Faits" text={decision.faits} />
+          <BodySection title="Enjeu juridique" text={decision.enjeu} />
+          <BodySection title="Solution" text={decision.solution} />
+          <BodySection title="Perspective" text={decision.perspective} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -134,8 +154,6 @@ export default function ArretFicheScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 22,
     fontWeight: "700",
@@ -155,26 +173,45 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   metaStars: { color: colors.accent, borderColor: colors.accent },
-  section: { marginBottom: 14 },
-  sectionTitle: {
+  highlight: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.brass,
+    borderRadius: colors.radius,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  highlightTitle: {
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 1,
+    letterSpacing: 1.1,
     textTransform: "uppercase",
-    color: colors.muted,
+    color: colors.brass,
+    marginBottom: 6,
+  },
+  highlightText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.ink,
+    fontFamily: "serif",
+  },
+  bodyBlock: {
+    marginTop: 8,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  bodySection: { marginBottom: 14 },
+  bodyTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.ink,
     marginBottom: 4,
   },
-  sectionText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
-  linkBtn: {
-    marginTop: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: colors.radius,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  linkBtnText: { color: colors.ink, fontWeight: "700", fontSize: 14 },
+  bodyText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
   center: {
     flex: 1,
@@ -183,7 +220,12 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 10,
   },
-  centerTitle: { fontSize: 17, fontWeight: "700", color: colors.ink, textAlign: "center" },
+  centerTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.ink,
+    textAlign: "center",
+  },
   centerText: { color: colors.muted, fontSize: 14, textAlign: "center" },
   btn: {
     marginTop: 8,

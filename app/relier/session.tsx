@@ -2,8 +2,10 @@ import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageHeader } from "../../src/components/PageHeader";
 import { derangement, type RelierItem } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** Chiffres de relation — plus gros, lisibles au tactile. */
@@ -22,6 +24,10 @@ export default function RelierSessionScreen() {
   const router = useRouter();
   const { session } = useRelierSession();
   const items = session.items;
+  const sectionLabel =
+    session.pack === "notions"
+      ? SECTION.relationsNotions
+      : SECTION.relationsArrets;
 
   const rightOrder = useMemo(() => derangement(items), [items]);
 
@@ -65,9 +71,7 @@ export default function RelierSessionScreen() {
   if (!items.length) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[sectionLabel, "Exercice"]} />
         <Text style={styles.empty}>Aucune série en cours.</Text>
       </SafeAreaView>
     );
@@ -83,16 +87,15 @@ export default function RelierSessionScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.bar}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.backText}>← Retour</Text>
-          </Pressable>
-          <Text style={styles.summary}>
+      <PageHeader
+        trail={[sectionLabel, "Exercice"]}
+        right={
+          <Text style={styles.summary} numberOfLines={1}>
             {Object.keys(pairs).length} / {items.length} reliés
           </Text>
-        </View>
-
+        }
+      />
+      <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.hint}>
           {selectedLeft
             ? "Touchez la correspondance à droite."
@@ -217,14 +220,7 @@ export default function RelierSessionScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  backText: { color: colors.accent, fontWeight: "600" },
-  summary: { color: colors.muted, fontSize: 13, fontWeight: "600" },
+  summary: { color: colors.muted, fontSize: 12, fontWeight: "600", textAlign: "right" },
   hint: { color: colors.muted, fontSize: 13, marginBottom: 14 },
   columns: { flexDirection: "row", gap: 10 },
   column: { flex: 1, gap: 8 },

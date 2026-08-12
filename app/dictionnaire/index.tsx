@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
 import { useManuelData } from "../../src/data/ManuelProvider";
@@ -22,6 +23,7 @@ import {
   splitCoursLinks,
   type DictEntry,
 } from "../../src/data/dictionnaire";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** `../arrets/ce-2021-.../` -> `ce-2021-...` */
@@ -123,6 +125,7 @@ export default function DictionnaireScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.dictionnaire]} />
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -134,9 +137,6 @@ export default function DictionnaireScreen() {
       ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
-            <Text style={styles.backText}>← Accueil</Text>
-          </Pressable>
           <Text style={styles.title}>Dictionnaire</Text>
           <Text style={styles.sub}>{state.entries.length} notions.</Text>
 
@@ -190,8 +190,6 @@ const styles = StyleSheet.create({
   },
   centerText: { color: colors.muted, fontSize: 14 },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 26,
     fontWeight: "700",
