@@ -45,7 +45,7 @@ export function groupByDecade(decisions: Decision[]): DecadeGroup[] {
   const sorted = sortChronologically(decisions);
   const groups = new Map<string, Decision[]>();
   sorted.forEach((d) => {
-    const decade = `${Math.floor((d.annee || 0) / 10) * 10}`;
+    const decade = decadeKey(d.annee);
     const list = groups.get(decade) || [];
     list.push(d);
     groups.set(decade, list);
@@ -53,6 +53,12 @@ export function groupByDecade(decisions: Decision[]): DecadeGroup[] {
   return [...groups.entries()]
     .sort((a, b) => Number(a[0]) - Number(b[0]))
     .map(([decade, items]) => ({ decade, items }));
+}
+
+/** Clé décennie (« 1820 » pour 1822) — capsule Chronologie. */
+export function decadeKey(annee?: number | null): string {
+  const y = Number(annee) || 0;
+  return `${Math.floor(y / 10) * 10}`;
 }
 
 export function searchDecisions(decisions: Decision[], query: string): Decision[] {

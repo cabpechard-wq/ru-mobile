@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -74,12 +74,25 @@ function DecisionRow({
 /** Décennie ouverte par défaut — évite de monter toute la frise (~995). */
 const DEFAULT_DECADE = "1820";
 
+function normalizeDecadeParam(raw: string | string[] | undefined): string | null {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (!v || !/^\d{3,4}$/.test(v)) return null;
+  return `${Math.floor(Number(v) / 10) * 10}`;
+}
+
 export default function ChronologieListScreen() {
   const router = useRouter();
+  const { decade: decadeParam } = useLocalSearchParams<{ decade?: string }>();
   const state = useChronologieData();
   const [filters, setFilters] = useState<ChronoFilters>(EMPTY_CHRONO_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [activeDecade, setActiveDecade] = useState<string | null>(DEFAULT_DECADE);
+  const initialDecade = normalizeDecadeParam(decadeParam) || DEFAULT_DECADE;
+  const [activeDecade, setActiveDecade] = useState<string | null>(initialDecade);
+
+  useEffect(() => {
+    const fromQuery = normalizeDecadeParam(decadeParam);
+    if (fromQuery) setActiveDecade(fromQuery);
+  }, [decadeParam]);
 
   const byId = useMemo(
     () => (state.status === "ready" ? buildById(state.decisions) : new Map()),

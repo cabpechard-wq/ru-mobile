@@ -14,6 +14,7 @@ import { PageHeader } from "../../src/components/PageHeader";
 import { useCardsData } from "../../src/data/CardsProvider";
 import {
   buildById,
+  decadeKey,
   directRelations,
   relatedCluster,
 } from "../../src/data/chronologie";
@@ -222,6 +223,7 @@ export default function ArretFicheScreen() {
   ].filter(Boolean);
 
   const showLineage = lineageTimeline.length > 1;
+  const decade = decadeKey(decision.annee);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -240,6 +242,17 @@ export default function ArretFicheScreen() {
             </Text>
           ))}
         </View>
+
+        <Pressable
+          testID="voir-chronologie"
+          onPress={() =>
+            router.push(`/chronologie?decade=${decade}` as never)
+          }
+          style={styles.chronoLink}
+          hitSlop={8}
+        >
+          <Text style={styles.chronoLinkText}>Voir dans la chronologie</Text>
+        </Pressable>
 
         <HighlightSection title="Objet" text={decision.objet} />
         <HighlightSection title="Portée" text={decision.portee} />
@@ -345,6 +358,17 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   metaStars: { color: colors.accent, borderColor: colors.accent },
+  chronoLink: {
+    alignSelf: "flex-start",
+    marginBottom: 14,
+    marginTop: -4,
+  },
+  chronoLinkText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
   highlight: {
     backgroundColor: colors.card,
     borderWidth: 1,
