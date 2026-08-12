@@ -1,11 +1,15 @@
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { formatDateFr } from "../../src/data/decisions";
-import { derangement, type RelierItem } from "../../src/data/relier";
+import {
+  derangement,
+  pickBatch,
+  type RelierItem,
+} from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
@@ -28,21 +32,51 @@ function yearFromRecto(recto: string): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Nouveau set : re-tire dans le pool, en évitant si possible le set courant.
+ */
+function pickNewSet(
+  pool: RelierItem[],
+  size: number,
+  currentIds: Set<string>,
+): RelierItem[] {
+  if (pool.length <= size) return pickBatch(pool, size);
+  let next = pickBatch(pool, size);
+  let tries = 0;
+  const sameAsCurrent = (batch: RelierItem[]) =>
+    batch.length === currentIds.size &&
+    batch.every((item) => currentIds.has(item.id));
+  while (tries < 12 && sameAsCurrent(next)) {
+    next = pickBatch(pool, size);
+    tries += 1;
+  }
+  return next;
+}
+
 export default function RelierSessionScreen() {
   const router = useRouter();
-  const { session } = useRelierSession();
+  const { session, setSession } = useRelierSession();
   const chrono = useChronologieData();
   const items = session.items;
   const pack = session.pack || "arrets";
   const sectionLabel =
     pack === "notions" ? SECTION.relationsNotions : SECTION.relationsArrets;
 
-  const rightOrder = useMemo(() => derangement(items), [items]);
-
+  const [rightOrder, setRightOrder] = useState<RelierItem[]>(() =>
+    derangement(items),
+  );
   const [pairs, setPairs] = useState<Record<string, number>>({});
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
   const [revealed, setRevealed] = useState(false);
+
+  useEffect(() => {
+    setRightOrder(derangement(items));
+    setPairs({});
+    setSelectedLeft(null);
+    setVerified(false);
+    setRevealed(false);
+  }, [items]);
 
   const dateBySlug = useMemo(() => {
     const map = new Map<string, string>();
@@ -61,7 +95,6 @@ export default function RelierSessionScreen() {
 
   const tapLeft = (item: RelierItem) => {
     if (revealed) return;
-    // Modifier une paire annule la vérification.
     if (verified) setVerified(false);
     setSelectedLeft((cur) => (cur === item.id ? null : item.id));
   };
@@ -94,7 +127,6 @@ export default function RelierSessionScreen() {
   };
 
   const showAnswers = () => {
-    // Place chaque gauche sur la bonne cible + marque vérifié.
     const next: Record<string, number> = {};
     items.forEach((item) => {
       const idx = rightOrder.findIndex((r) => r.id === item.id);
@@ -106,10 +138,23 @@ export default function RelierSessionScreen() {
     setRevealed(true);
   };
 
+  const newSet = () => {
+    const pool = session.pool?.length ? session.pool : items;
+    const size = session.batchSize || items.length;
+    const currentIds = new Set(items.map((i) => i.id));
+    const nextItems = pickNewSet(pool, size, currentIds);
+    setSession({
+      ...session,
+      items: nextItems,
+      pool,
+      batchSize: size,
+    });
+  };
+
   const correctCount = items.filter((item) => {
     const idx = pairs[item.id];
     if (idx === undefined) return false;
-    return rightOrder[idx].id === item.id;
+    return rightOrder[idx]?.id === item.id;
   }).length;
 
   const exactDateFor = (item: RelierItem): string | null => {
@@ -131,6 +176,7 @@ export default function RelierSessionScreen() {
   }
 
   const showResult = verified || revealed;
+  const rowCount = Math.max(items.length, rightOrder.length);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -149,110 +195,131 @@ export default function RelierSessionScreen() {
             : "Touchez un élément à gauche, puis sa correspondance."}
         </Text>
 
-        <View style={styles.columns}>
-          <View style={styles.column}>
-            {items.map((item) => {
-              const pairedIndex = pairs[item.id];
-              const isSelected = selectedLeft === item.id;
-              const isPaired = pairedIndex !== undefined;
-              const isCorrect =
-                showResult && isPaired
-                  ? rightOrder[pairedIndex].id === item.id
-                  : null;
-              return (
-                <Pressable
-                  key={item.id}
-                  testID={`relier-left-${item.id}`}
-                  onPress={() => tapLeft(item)}
-                  style={[
-                    styles.cell,
-                    isSelected && styles.cellSelected,
-                    isPaired && !showResult && styles.cellPaired,
-                    isCorrect === true && styles.cellCorrect,
-                    isCorrect === false && styles.cellWrong,
-                  ]}
-                >
-                  {isPaired ? (
-                    <View
-                      style={[
-                        styles.badge,
-                        isCorrect === true && styles.badgeOk,
-                        isCorrect === false && styles.badgeBad,
-                      ]}
-                    >
-                      <Text style={styles.badgeText}>
-                        {BADGE_NUMBERS[pairedIndex] || "•"}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.cellText}>{item.recto}</Text>
-                  {isCorrect === true && pack === "arrets" ? (
-                    <View style={styles.okMeta}>
-                      {exactDateFor(item) ? (
-                        <Text style={styles.okDate}>{exactDateFor(item)}</Text>
-                      ) : null}
-                      {ficheSlug(item) ? (
-                        <Text
-                          style={styles.okFiche}
-                          onPress={() =>
-                            router.push(`/arrets/${ficheSlug(item)}`)
-                          }
-                        >
-                          Fiche d'arrêt →
-                        </Text>
-                      ) : null}
-                    </View>
-                  ) : null}
-                </Pressable>
-              );
-            })}
+        <View style={styles.board}>
+          <View style={styles.boardHead}>
+            <Text style={styles.colTitle}>
+              {pack === "notions" ? "Notion" : "Nom"}
+            </Text>
+            <Text style={styles.colTitle}>
+              {pack === "notions" ? "Définition" : "Objet"}
+            </Text>
           </View>
 
-          <View style={styles.column}>
-            {rightOrder.map((item, index) => {
-              const isUsed = usedRightIndices.has(index);
-              const pairedLeftId = Object.entries(pairs).find(
-                ([, idx]) => idx === index
-              )?.[0];
-              const isCorrect =
-                showResult && pairedLeftId
-                  ? item.id === pairedLeftId
-                  : showResult && !pairedLeftId
-                    ? false
-                    : null;
-              return (
-                <Pressable
-                  key={item.id}
-                  testID={`relier-right-${index}`}
-                  onPress={() => tapRight(index)}
-                  style={[
-                    styles.cell,
-                    isUsed && !showResult && styles.cellPaired,
-                    isCorrect === true && styles.cellCorrect,
-                    isCorrect === false && styles.cellWrong,
-                  ]}
-                >
-                  {isUsed ? (
-                    <View
-                      style={[
-                        styles.badge,
-                        isCorrect === true && styles.badgeOk,
-                        isCorrect === false && styles.badgeBad,
-                      ]}
-                    >
-                      <Text style={styles.badgeText}>
-                        {BADGE_NUMBERS[index] || "•"}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.cellText}>{item.objet}</Text>
-                  {revealed && isCorrect !== true ? (
-                    <Text style={styles.answerHint}>→ {item.recto}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
+          {Array.from({ length: rowCount }, (_, rowIndex) => {
+            const left = items[rowIndex];
+            const right = rightOrder[rowIndex];
+            return (
+              <View key={`row-${rowIndex}`} style={styles.boardRow}>
+                {left ? (
+                  (() => {
+                    const pairedIndex = pairs[left.id];
+                    const isSelected = selectedLeft === left.id;
+                    const isPaired = pairedIndex !== undefined;
+                    const isCorrect =
+                      showResult && isPaired
+                        ? rightOrder[pairedIndex]?.id === left.id
+                        : null;
+                    return (
+                      <Pressable
+                        testID={`relier-left-${left.id}`}
+                        onPress={() => tapLeft(left)}
+                        style={[
+                          styles.cell,
+                          isSelected && styles.cellSelected,
+                          isPaired && !showResult && styles.cellPaired,
+                          isCorrect === true && styles.cellCorrect,
+                          isCorrect === false && styles.cellWrong,
+                        ]}
+                      >
+                        {isPaired ? (
+                          <View
+                            style={[
+                              styles.badge,
+                              isCorrect === true && styles.badgeOk,
+                              isCorrect === false && styles.badgeBad,
+                            ]}
+                          >
+                            <Text style={styles.badgeText}>
+                              {BADGE_NUMBERS[pairedIndex] || "•"}
+                            </Text>
+                          </View>
+                        ) : null}
+                        <Text style={styles.cellText}>{left.recto}</Text>
+                        {isCorrect === true && pack === "arrets" ? (
+                          <View style={styles.okMeta}>
+                            {exactDateFor(left) ? (
+                              <Text style={styles.okDate}>
+                                {exactDateFor(left)}
+                              </Text>
+                            ) : null}
+                            {ficheSlug(left) ? (
+                              <Text
+                                style={styles.okFiche}
+                                onPress={() =>
+                                  router.push(`/arrets/${ficheSlug(left)}`)
+                                }
+                              >
+                                Fiche d'arrêt →
+                              </Text>
+                            ) : null}
+                          </View>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })()
+                ) : (
+                  <View style={styles.cellSpacer} />
+                )}
+
+                {right ? (
+                  (() => {
+                    const isUsed = usedRightIndices.has(rowIndex);
+                    const pairedLeftId = Object.entries(pairs).find(
+                      ([, idx]) => idx === rowIndex,
+                    )?.[0];
+                    const isCorrect =
+                      showResult && pairedLeftId
+                        ? right.id === pairedLeftId
+                        : showResult && !pairedLeftId
+                          ? false
+                          : null;
+                    return (
+                      <Pressable
+                        testID={`relier-right-${rowIndex}`}
+                        onPress={() => tapRight(rowIndex)}
+                        style={[
+                          styles.cell,
+                          isUsed && !showResult && styles.cellPaired,
+                          isCorrect === true && styles.cellCorrect,
+                          isCorrect === false && styles.cellWrong,
+                        ]}
+                      >
+                        {isUsed ? (
+                          <View
+                            style={[
+                              styles.badge,
+                              isCorrect === true && styles.badgeOk,
+                              isCorrect === false && styles.badgeBad,
+                            ]}
+                          >
+                            <Text style={styles.badgeText}>
+                              {BADGE_NUMBERS[rowIndex] || "•"}
+                            </Text>
+                          </View>
+                        ) : null}
+                        <Text style={styles.cellText}>{right.objet}</Text>
+                        {revealed && isCorrect !== true ? (
+                          <Text style={styles.answerHint}>→ {right.recto}</Text>
+                        ) : null}
+                      </Pressable>
+                    );
+                  })()
+                ) : (
+                  <View style={styles.cellSpacer} />
+                )}
+              </View>
+            );
+          })}
         </View>
 
         {showResult ? (
@@ -274,13 +341,22 @@ export default function RelierSessionScreen() {
             <Text style={styles.btnText}>Vérifier</Text>
           </Pressable>
         </View>
-        <Pressable
-          testID="relier-reveal"
-          style={styles.btnGhost}
-          onPress={showAnswers}
-        >
-          <Text style={styles.btnGhostText}>Voir les réponses</Text>
-        </Pressable>
+        <View style={styles.secondaryActions}>
+          <Pressable
+            testID="relier-reveal"
+            style={styles.btnGhost}
+            onPress={showAnswers}
+          >
+            <Text style={styles.btnGhostText}>Voir les réponses</Text>
+          </Pressable>
+          <Pressable
+            testID="relier-new-set"
+            style={styles.btnGhost}
+            onPress={newSet}
+          >
+            <Text style={styles.btnGhostText}>Nouveau set</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -296,18 +372,43 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   hint: { color: colors.muted, fontSize: 13, marginBottom: 14 },
-  columns: { flexDirection: "row", gap: 10 },
-  column: { flex: 1, gap: 8 },
-  cell: {
+  board: {
+    gap: 8,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: colors.radius,
-    backgroundColor: colors.card,
+    padding: 10,
+  },
+  boardHead: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 2,
+  },
+  colTitle: {
+    flex: 1,
+    fontFamily: "serif",
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.accent,
+  },
+  boardRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
+  },
+  cell: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    backgroundColor: colors.bg,
     padding: 10,
     paddingRight: 28,
     minHeight: 56,
     justifyContent: "center",
   },
+  cellSpacer: { flex: 1 },
   cellText: { color: colors.ink, fontSize: 13, lineHeight: 18 },
   answerHint: {
     marginTop: 6,
@@ -315,7 +416,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
-  /** Sélection / paires non vérifiées = bleu. */
   cellSelected: {
     borderColor: "#2563eb",
     borderWidth: 2,
@@ -377,7 +477,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnOutlineText: { color: colors.ink, fontWeight: "700", fontSize: 14 },
-  btnGhost: { marginTop: 12, alignItems: "center", paddingVertical: 8 },
+  secondaryActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 18,
+    marginTop: 12,
+  },
+  btnGhost: { alignItems: "center", paddingVertical: 8, paddingHorizontal: 4 },
   btnGhostText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
 });

@@ -30,7 +30,12 @@ export default function RelierNotionsSetupScreen() {
 
   const start = (size: number) => {
     if (filteredItems.length < 2) return;
-    setSession({ items: pickBatch(filteredItems, size), pack: "notions" });
+    setSession({
+      items: pickBatch(filteredItems, size),
+      pack: "notions",
+      pool: filteredItems,
+      batchSize: size,
+    });
     router.push("/relier/session");
   };
 

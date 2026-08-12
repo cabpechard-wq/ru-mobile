@@ -34,7 +34,12 @@ export default function RelierSetupScreen() {
 
   const start = (size: number) => {
     if (filteredItems.length < 2) return;
-    setSession({ items: pickBatch(filteredItems, size), pack: "arrets" });
+    setSession({
+      items: pickBatch(filteredItems, size),
+      pack: "arrets",
+      pool: filteredItems,
+      batchSize: size,
+    });
     router.push("/relier/session");
   };
 
