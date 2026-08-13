@@ -7,7 +7,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "image": "sdk-54",
       "node": "20.19.4",
       "cache": {
         "key": "npm-no-frozen-ci"
@@ -15,11 +14,16 @@
       "env": {
         "EAS_NO_FROZEN_LOCKFILE": "1",
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      },
+      "android": {
+        "image": "sdk-54"
+      },
+      "ios": {
+        "image": "sdk-54"
       }
     },
     "preview": {
       "distribution": "internal",
-      "image": "sdk-54",
       "node": "20.19.4",
       "cache": {
         "key": "npm-no-frozen-ci"
@@ -29,11 +33,14 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       },
       "android": {
+        "image": "sdk-54",
         "buildType": "apk"
+      },
+      "ios": {
+        "image": "sdk-54"
       }
     },
     "production": {
-      "image": "sdk-54",
       "node": "20.19.4",
       "cache": {
         "key": "npm-no-frozen-ci"
@@ -43,7 +50,11 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       },
       "android": {
+        "image": "sdk-54",
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "image": "sdk-54"
       }
     }
   },
