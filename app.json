@@ -1,18 +1,18 @@
 {
   "expo": {
     "name": "Les Ressources Universitaires",
-    "slug": "editions-particulieres",
+    "slug": "les-ressources-universitaires",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "editions-particulieres",
+    "scheme": "les-ressources-universitaires",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "fr.editions-particulieres.flipcards"
+      "bundleIdentifier": "fr.lesressourcesuniversitaires.flipcards"
     },
     "android": {
-      "package": "fr.editions_particulieres.flipcards",
+      "package": "fr.lesressourcesuniversitaires.flipcards",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0f766e",
