@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Les Ressources Universitaires",
+    "name": "Droit administratif - LRU",
     "slug": "les-ressources-universitaires",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
       "bundleIdentifier": "fr.lesressourcesuniversitaires.flipcards"
     },
     "android": {
-      "package": "fr.lesressourcesuniversitaires.flipcards",
+      "package": "lru.droit_public_et_administratif",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0f766e",
