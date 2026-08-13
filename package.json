@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:apk": "eas build -p android --profile preview"
+    "build:apk": "eas build -p android --profile preview",
+    "eas-build-pre-install": "NODE_ENV=development npm install --package-lock-only --legacy-peer-deps --include=dev --ignore-scripts --no-audit --no-fund"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -31,6 +32,9 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "typescript": "~5.9.2"
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "typescript": "5.9.3"
   }
 }

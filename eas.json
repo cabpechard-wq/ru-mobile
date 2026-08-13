@@ -6,15 +6,39 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "image": "sdk-54",
+      "node": "20.19.4",
+      "cache": {
+        "key": "npm-ts-5.9.3"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
     },
     "preview": {
       "distribution": "internal",
+      "image": "sdk-54",
+      "node": "20.19.4",
+      "cache": {
+        "key": "npm-ts-5.9.3"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "image": "sdk-54",
+      "node": "20.19.4",
+      "cache": {
+        "key": "npm-ts-5.9.3"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      },
       "android": {
         "buildType": "app-bundle"
       }
