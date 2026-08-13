@@ -27,6 +27,13 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7a28f1c3-4992-41dd-b486-9aa357d4056b"
+      }
+    },
+    "owner": "cabinetpechard"
   }
 }
