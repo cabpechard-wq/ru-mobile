@@ -15,10 +15,34 @@ async function fetchJson<T>(url: string, token?: string): Promise<T> {
     (err as Error & { code?: string }).code = "unauthorized";
     throw err;
   }
+  const text = await res.text();
+  const trimmed = (text || "").trim();
+
   if (!res.ok) {
-    throw new Error(`Serveur indisponible (${res.status})`);
+    // Parfois un reverse-proxy renvoie une page HTML d'erreur.
+    if (trimmed.startsWith("<")) {
+      throw new Error(`Serveur indisponible (${res.status}, page HTML).`);
+    }
+    try {
+      const body = JSON.parse(trimmed) as { error?: string };
+      throw new Error(body.error || `Serveur indisponible (${res.status})`);
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("Serveur")) throw e;
+      throw new Error(`Serveur indisponible (${res.status})`);
+    }
   }
-  return (await res.json()) as T;
+
+  if (!trimmed) throw new Error("Réponse vide du serveur.");
+  if (trimmed.startsWith("<")) {
+    throw new Error(
+      "Réponse HTML au lieu de JSON (réseau / pare-feu / session).",
+    );
+  }
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    throw new Error("Réponse JSON invalide.");
+  }
 }
 
 /**
@@ -28,11 +52,14 @@ async function fetchJson<T>(url: string, token?: string): Promise<T> {
  * `requiresAuthHeader` : false pour un JSON statique public (pas de
  * vérification serveur, pas besoin de Bearer — évite un preflight CORS
  * inutile). true (défaut) pour un endpoint Worker qui vérifie la session.
+ *
+ * `fallback` : JSON embarqué utilisé le réseau échoue (mode démo fiable).
  */
 export function useAuthAwareJson<T>(
   demoUrl: string,
   memberUrl: string,
-  requiresAuthHeader = true
+  requiresAuthHeader = true,
+  fallback?: T,
 ): RemoteJsonState<T> & { reload: () => void } {
   const auth = useAuth();
   const [state, setState] = useState<RemoteJsonState<T>>({ status: "loading" });
@@ -46,7 +73,13 @@ export function useAuthAwareJson<T>(
     const token = isMember && requiresAuthHeader ? auth.token : undefined;
 
     fetchJson<T>(url, token)
-      .then((json) => setState({ status: "ready", json, source: isMember ? "member" : "demo" }))
+      .then((json) =>
+        setState({
+          status: "ready",
+          json,
+          source: isMember ? "member" : "demo",
+        }),
+      )
       .catch((err: unknown) => {
         if (
           isMember &&
@@ -56,6 +89,11 @@ export function useAuthAwareJson<T>(
           auth.logout();
           return;
         }
+        // Réseau / HTML / parse : bascule sur le JSON embarqué si dispo.
+        if (fallback != null) {
+          setState({ status: "ready", json: fallback, source: "demo" });
+          return;
+        }
         const raw = err instanceof Error ? err.message : "";
         const message = /failed to fetch|network/i.test(raw)
           ? "Impossible de joindre le serveur."
@@ -63,7 +101,7 @@ export function useAuthAwareJson<T>(
         setState({ status: "error", message });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.status, demoUrl, memberUrl, requiresAuthHeader]);
+  }, [auth.status, demoUrl, memberUrl, requiresAuthHeader, fallback]);
 
   useEffect(() => {
     load();

@@ -12,14 +12,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { PageHeader } from "../../src/components/PageHeader";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
+import { useManuelData } from "../../src/data/ManuelProvider";
 import {
+  chapterIdFromManuelPath,
   groupByLetter,
   searchEntries,
   splitCoursLinks,
   type DictEntry,
 } from "../../src/data/dictionnaire";
+import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** `../arrets/ce-2021-.../` -> `ce-2021-...` */
@@ -31,11 +35,15 @@ function slugFromArretPath(path: string): string | null {
 function EntryRow({
   entry,
   knownDecisionIds,
+  knownChapterIds,
   onOpenDecision,
+  onOpenChapter,
 }: {
   entry: DictEntry;
   knownDecisionIds: Set<string> | null;
+  knownChapterIds: Set<string> | null;
   onOpenDecision: (id: string) => void;
+  onOpenChapter: (id: string) => void;
 }) {
   const { chapitres, arrets } = splitCoursLinks(entry.cours);
   return (
@@ -43,25 +51,47 @@ function EntryRow({
       <Text style={styles.term}>{entry.term}</Text>
       <Text style={styles.def}>{entry.definition}</Text>
       {chapitres.length ? (
-        <Text style={styles.cours} numberOfLines={1}>
-          Cours : {chapitres.map((c) => c.label).join(" · ")}
-        </Text>
+        <View style={styles.linksRow}>
+          <Text style={styles.linksLabel}>Cours : </Text>
+          {chapitres.map((c, i) => {
+            const chapterId = chapterIdFromManuelPath(c.path);
+            const tappable =
+              !!chapterId && !!knownChapterIds?.has(chapterId);
+            return (
+              <Text key={c.path}>
+                <Text
+                  style={tappable ? styles.linkTappable : styles.linkPlain}
+                  onPress={
+                    tappable ? () => onOpenChapter(chapterId!) : undefined
+                  }
+                >
+                  {c.label}
+                </Text>
+                {i < chapitres.length - 1 ? (
+                  <Text style={styles.linksLabel}> · </Text>
+                ) : null}
+              </Text>
+            );
+          })}
+        </View>
       ) : null}
       {arrets.length ? (
-        <View style={styles.arretsRow}>
-          <Text style={styles.arretsLabel}>Jurisprudence : </Text>
+        <View style={styles.linksRow}>
+          <Text style={styles.linksLabel}>Jurisprudence : </Text>
           {arrets.map((a, i) => {
             const slug = slugFromArretPath(a.path);
             const tappable = !!slug && !!knownDecisionIds?.has(slug);
             return (
               <Text key={a.path}>
                 <Text
-                  style={tappable ? styles.arretLinkTappable : styles.arretLink}
+                  style={tappable ? styles.linkTappable : styles.linkPlain}
                   onPress={tappable ? () => onOpenDecision(slug!) : undefined}
                 >
                   {a.label}
                 </Text>
-                {i < arrets.length - 1 ? <Text style={styles.arretsLabel}> · </Text> : null}
+                {i < arrets.length - 1 ? (
+                  <Text style={styles.linksLabel}> · </Text>
+                ) : null}
               </Text>
             );
           })}
@@ -75,11 +105,16 @@ export default function DictionnaireScreen() {
   const router = useRouter();
   const state = useDictionnaireData();
   const chrono = useChronologieData();
+  const manuel = useManuelData();
   const [query, setQuery] = useState("");
 
   const knownDecisionIds = useMemo(
     () => (chrono.status === "ready" ? new Set(chrono.decisions.map((d) => d.id)) : null),
     [chrono]
+  );
+  const knownChapterIds = useMemo(
+    () => (manuel.status === "ready" ? new Set(manuel.chapters.keys()) : null),
+    [manuel]
   );
 
   const filtered = useMemo(() => {
@@ -90,6 +125,7 @@ export default function DictionnaireScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[SECTION.dictionnaire]} />
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -101,9 +137,6 @@ export default function DictionnaireScreen() {
       ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <Pressable onPress={() => router.back()} style={styles.back}>
-            <Text style={styles.backText}>← Accueil</Text>
-          </Pressable>
           <Text style={styles.title}>Dictionnaire</Text>
           <Text style={styles.sub}>{state.entries.length} notions.</Text>
 
@@ -128,7 +161,9 @@ export default function DictionnaireScreen() {
                     key={e.id}
                     entry={e}
                     knownDecisionIds={knownDecisionIds}
+                    knownChapterIds={knownChapterIds}
                     onOpenDecision={(id) => router.push(`/chronologie/${id}`)}
+                    onOpenChapter={(id) => router.push(`/manuel/${id}`)}
                   />
                 ))}
               </View>
@@ -155,8 +190,6 @@ const styles = StyleSheet.create({
   },
   centerText: { color: colors.muted, fontSize: 14 },
   scroll: { padding: 16, paddingBottom: 40 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 26,
     fontWeight: "700",
@@ -186,12 +219,11 @@ const styles = StyleSheet.create({
   },
   term: { fontWeight: "700", color: colors.ink, fontSize: 14, marginBottom: 3 },
   def: { color: colors.versoText, fontSize: 13, lineHeight: 19 },
-  cours: { color: colors.muted, fontSize: 11, marginTop: 6, fontStyle: "italic" },
-  arretsRow: { marginTop: 4, flexDirection: "row", flexWrap: "wrap" },
-  arretsLabel: { color: colors.muted, fontSize: 11, fontStyle: "italic" },
-  arretLink: { color: colors.muted, fontSize: 11, fontStyle: "italic" },
-  arretLinkTappable: {
-    color: colors.accent,
+  linksRow: { marginTop: 4, flexDirection: "row", flexWrap: "wrap" },
+  linksLabel: { color: colors.muted, fontSize: 11, fontStyle: "italic" },
+  linkPlain: { color: colors.muted, fontSize: 11, fontStyle: "italic" },
+  linkTappable: {
+    color: colors.brass,
     fontSize: 11,
     fontWeight: "700",
     textDecorationLine: "underline",

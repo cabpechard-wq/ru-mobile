@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useMemo } from "react";
+import demoJson from "../../assets/demo/relier-cards.json";
 import { DEMO_RELIER_ENDPOINT, MEMBER_RELIER_ENDPOINT } from "./config";
-import { type NormalizedRelierData, type RelierData, normalizeRelierData } from "./relier";
+import {
+  type NormalizedRelierData,
+  type RelierData,
+  normalizeRelierData,
+} from "./relier";
 import { useAuthAwareJson } from "./useAuthAwareJson";
 
 type RelierState =
@@ -15,7 +20,9 @@ const RelierContext = createContext<RelierContextValue | null>(null);
 export function RelierProvider({ children }: { children: React.ReactNode }) {
   const remote = useAuthAwareJson<RelierData>(
     DEMO_RELIER_ENDPOINT,
-    MEMBER_RELIER_ENDPOINT
+    MEMBER_RELIER_ENDPOINT,
+    true,
+    demoJson as RelierData,
   );
 
   const value = useMemo<RelierContextValue>(() => {
