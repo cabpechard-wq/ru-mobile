@@ -2,6 +2,11 @@ name: Build Android (EAS)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - claude/google-play-first-publish-qrs8mu
+    paths:
+      - .github/workflows/build-android.yml
 
 jobs:
   build:
