@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -6,18 +6,30 @@ import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useEnchainementsData } from "../../src/data/EnchainementsProvider";
 import { useEnchainementsSession } from "../../src/data/EnchainementsSessionContext";
+import { useManuelData } from "../../src/data/ManuelProvider";
 import { displayNom, pickRandomChain, shuffledOrder, type Decision } from "../../src/data/enchainements";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function EnchainementsSetupScreen() {
   const router = useRouter();
+  const { cours } = useLocalSearchParams<{ cours?: string }>();
   const state = useEnchainementsData();
+  const manuel = useManuelData();
   const { setSession } = useEnchainementsSession();
   const [draw, setDraw] = useState<Decision[] | null>(null);
   const [empty, setEmpty] = useState(false);
 
-  const tirer = (decisions: Decision[]) => {
+  const chapterExercises =
+    cours && manuel.status === "ready" ? manuel.exercises[cours] : undefined;
+  const decisions =
+    state.status === "ready"
+      ? cours && chapterExercises
+        ? state.decisions.filter((d) => chapterExercises.jurisprudence.includes(d.nom))
+        : state.decisions
+      : [];
+
+  const tirer = () => {
     const chain = pickRandomChain(decisions);
     setEmpty(!chain);
     setDraw(chain);
@@ -40,8 +52,9 @@ export default function EnchainementsSetupScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Enchaînements (chrono)logiques</Text>
           <Text style={styles.sub}>
-            Remettez un enchaînement de décisions liées dans l'ordre
-            chronologique — dates cachées.
+            {chapterExercises
+              ? `Fonds du chapitre « ${chapterExercises.title} » (${decisions.length} arrêt(s)).`
+              : "Remettez un enchaînement de décisions liées dans l'ordre chronologique — dates cachées."}
             {state.source === "demo" ? " (démo)" : ""}
           </Text>
 
@@ -49,7 +62,7 @@ export default function EnchainementsSetupScreen() {
             <Pressable
               testID="draw-chain"
               style={styles.btnOutline}
-              onPress={() => tirer(state.decisions)}
+              onPress={tirer}
             >
               <Text style={styles.btnOutlineText}>Tirer un enchaînement</Text>
             </Pressable>

@@ -5,13 +5,23 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { MANUEL_ENDPOINT } from "./config";
-import { buildChapterIndex, type Chapter, type ManuelData } from "./manuel";
+import { MANUEL_ENDPOINT, MANUEL_EXERCISES_ENDPOINT } from "./config";
+import {
+  buildChapterIndex,
+  type Chapter,
+  type ManuelData,
+  type ManuelExercisesData,
+} from "./manuel";
 
 type ManuelState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; chapters: Map<string, Chapter>; rootIds: string[] };
+  | {
+      status: "ready";
+      chapters: Map<string, Chapter>;
+      rootIds: string[];
+      exercises: ManuelExercisesData;
+    };
 
 type ManuelContextValue = ManuelState & { reload: () => void };
 
@@ -22,16 +32,22 @@ export function ManuelProvider({ children }: { children: React.ReactNode }) {
 
   const load = useCallback(() => {
     setState({ status: "loading" });
-    fetch(MANUEL_ENDPOINT)
-      .then((res) => {
+    Promise.all([
+      fetch(MANUEL_ENDPOINT).then((res) => {
         if (!res.ok) throw new Error(`Serveur indisponible (${res.status})`);
         return res.json() as Promise<ManuelData>;
-      })
-      .then((json) =>
+      }),
+      // Best-effort : les liens exercices sont un bonus, pas le cours lui-même.
+      fetch(MANUEL_EXERCISES_ENDPOINT)
+        .then((res) => (res.ok ? (res.json() as Promise<ManuelExercisesData>) : {}))
+        .catch(() => ({}) as ManuelExercisesData),
+    ])
+      .then(([json, exercises]) =>
         setState({
           status: "ready",
           chapters: buildChapterIndex(json),
           rootIds: json.rootIds || [],
+          exercises,
         })
       )
       .catch((err: unknown) => {

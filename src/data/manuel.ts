@@ -30,8 +30,26 @@ export type ManuelData = {
   chapters: Chapter[];
 };
 
+export type ChapterExercises = {
+  title: string;
+  jurisprudence: string[];
+  notions: string[];
+};
+
+/** {ref: exercices} — voir manuel/exercices.json (web). */
+export type ManuelExercisesData = Record<string, ChapterExercises>;
+
 export function buildChapterIndex(data: ManuelData): Map<string, Chapter> {
   return new Map(data.chapters.map((c) => [c.id, c]));
+}
+
+/**
+ * "dp-000-dp-100-dp-120" -> "DP-120" : dérive la référence de chapitre
+ * (clé de manuel/exercices.json) depuis l'id de chapitre du manuel mobile.
+ */
+export function refForChapterId(id: string): string | null {
+  const m = id.match(/dp-(\d+)$/);
+  return m ? `DP-${m[1]}` : null;
 }
 
 /** Fil d'Ariane, racine en premier. */

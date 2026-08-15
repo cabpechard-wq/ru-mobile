@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,8 +7,9 @@ import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
 import { starsLabel } from "../../src/data/cards";
+import { useManuelData } from "../../src/data/ManuelProvider";
 import { useRelierData } from "../../src/data/RelierProvider";
-import { filterRelierItems, pickBatch } from "../../src/data/relier";
+import { filterRelierItems, pickBatch, type RelierItem } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
@@ -17,20 +18,32 @@ const BATCH_SIZES = [3, 5, 10];
 
 export default function RelierSetupScreen() {
   const router = useRouter();
+  const { cours } = useLocalSearchParams<{ cours?: string }>();
   const relierState = useRelierData();
+  const manuel = useManuelData();
   const { setSession } = useRelierSession();
   const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [selectedNotions, setSelectedNotions] = useState<string[]>([]);
   const [selectedImportance, setSelectedImportance] = useState<number[]>([]);
 
+  const chapterExercises =
+    cours && manuel.status === "ready" ? manuel.exercises[cours] : undefined;
+
+  const chapterItems: RelierItem[] | undefined = useMemo(() => {
+    if (!cours || relierState.status !== "ready" || !chapterExercises) return undefined;
+    const names = new Set(chapterExercises.jurisprudence);
+    return relierState.data.allItems.filter((i) => names.has(i.recto));
+  }, [cours, chapterExercises, relierState]);
+
   const filteredItems = useMemo(() => {
     if (relierState.status !== "ready") return [];
-    return filterRelierItems(relierState.data.allItems, {
+    const base = chapterItems ?? relierState.data.allItems;
+    return filterRelierItems(base, {
       themes: selectedThemes,
       notions: selectedNotions,
       importance: selectedImportance,
     });
-  }, [relierState, selectedThemes, selectedNotions, selectedImportance]);
+  }, [relierState, chapterItems, selectedThemes, selectedNotions, selectedImportance]);
 
   const start = (size: number) => {
     if (filteredItems.length < 2) return;
@@ -69,15 +82,21 @@ export default function RelierSetupScreen() {
           <Text style={styles.kicker}>Relations</Text>
           <Text style={styles.title}>Relations — Grands arrêts</Text>
           <Text style={styles.sub}>
-            Hub Relations : Grands arrêts ·{" "}
-            <Text
-              style={styles.inlineLink}
-              onPress={() => router.push("/relier/notions" as never)}
-            >
-              Grandes notions
-            </Text>
-            . Reliez chaque arrêt à son objet. Touchez un élément à gauche,
-            puis sa correspondance à droite.
+            {chapterExercises ? (
+              `Fonds du chapitre « ${chapterExercises.title} » (${chapterItems?.length ?? 0} arrêt(s)).`
+            ) : (
+              <>
+                Hub Relations : Grands arrêts ·{" "}
+                <Text
+                  style={styles.inlineLink}
+                  onPress={() => router.push("/relier/notions" as never)}
+                >
+                  Grandes notions
+                </Text>
+                . Reliez chaque arrêt à son objet. Touchez un élément à gauche,
+                puis sa correspondance à droite.
+              </>
+            )}
             {relierState.source === "demo" ? " (démo)" : ""}
           </Text>
 
@@ -141,6 +160,11 @@ export default function RelierSetupScreen() {
             </Text>
 
             <Text style={styles.cardTitle}>Choisir une série</Text>
+            {chapterItems && chapterItems.length < 2 ? (
+              <Text style={styles.hint}>
+                Pas assez d'arrêts dans ce chapitre pour un exercice Relier.
+              </Text>
+            ) : null}
             {BATCH_SIZES.map((size) => {
               const disabled = filteredItems.length < Math.min(size, 2);
               return (
@@ -203,6 +227,7 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
   },
   cardTitle: { fontWeight: "700", color: colors.ink, marginTop: 4 },
+  hint: { color: colors.muted, fontSize: 13 },
   btn: {
     backgroundColor: colors.accent,
     borderRadius: colors.radius,
