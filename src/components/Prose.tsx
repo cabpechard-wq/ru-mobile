@@ -101,7 +101,29 @@ type Section = {
   body: Block[];
 };
 
-/** Découpe le prose en sections sous chaque titre (h2/h3), pour dépliants. */
+/**
+ * Certains paragraphes ("Pour les concours et examens", "Dans les
+ * publications du Conseil d'État…") sont des rappels pédagogiques
+ * récurrents, rédigés en tête de paragraphe en gras plutôt que comme un
+ * vrai titre. Sans traitement particulier, ils tombent dans le corps du
+ * dépliant précédent au lieu de former leur propre section. On les
+ * détecte pour leur donner un accordéon autonome, comme un titre.
+ */
+const CALLOUT_LEADS = ["Pour les concours et examens", "Dans les publications du Conseil d'État"];
+
+function normalizeApostrophes(text: string): string {
+  return text.replace(/['’]/g, "'");
+}
+
+function calloutLeadRun(block: Block): InlineRun | null {
+  if (block.type !== "paragraph" || !block.runs.length) return null;
+  const first = block.runs[0];
+  if (!first.bold) return null;
+  const text = normalizeApostrophes(first.text).replace(/[\s:]+$/, "");
+  return CALLOUT_LEADS.some((lead) => text.startsWith(lead)) ? first : null;
+}
+
+/** Découpe le prose en sections sous chaque titre (h2/h3) ou rappel pédagogique, pour dépliants. */
 function splitIntoSections(blocks: Block[]): Section[] {
   const sections: Section[] = [];
   let current: Section = { heading: null, body: [] };
@@ -109,9 +131,20 @@ function splitIntoSections(blocks: Block[]): Section[] {
     if (b.type === "heading") {
       if (current.heading || current.body.length) sections.push(current);
       current = { heading: b, body: [] };
-    } else {
-      current.body.push(b);
+      continue;
     }
+    const lead = calloutLeadRun(b);
+    if (lead) {
+      if (current.heading || current.body.length) sections.push(current);
+      const rest = (b as Extract<Block, { type: "paragraph" }>).runs.slice(1);
+      if (rest.length) rest[0] = { ...rest[0], text: rest[0].text.replace(/^[\s:]+/, "") };
+      current = {
+        heading: { type: "heading", level: 3, runs: [lead] },
+        body: rest.length ? [{ type: "paragraph", runs: rest }] : [],
+      };
+      continue;
+    }
+    current.body.push(b);
   }
   if (current.heading || current.body.length) sections.push(current);
   return sections;

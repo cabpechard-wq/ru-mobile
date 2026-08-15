@@ -145,6 +145,32 @@ export function ManuelChapterView({
             })}
           </View>
         ) : null}
+
+        <View style={styles.learnMore}>
+          <Text style={styles.learnMoreLabel}>Apprendre les arrêts de ce cours :</Text>
+          <View style={styles.learnMoreRow}>
+            <Pressable onPress={() => router.push("/flipcards")}>
+              <Text style={styles.learnMoreLink}>Flipcards</Text>
+            </Pressable>
+            <Text style={styles.learnMoreSep}>·</Text>
+            <Pressable onPress={() => router.push("/relier")}>
+              <Text style={styles.learnMoreLink}>Relations</Text>
+            </Pressable>
+            <Text style={styles.learnMoreSep}>·</Text>
+            <Pressable onPress={() => router.push("/chronologie")}>
+              <Text style={styles.learnMoreLink}>Chronologie</Text>
+            </Pressable>
+          </View>
+
+          <Text style={[styles.learnMoreLabel, styles.learnMoreLabelSpaced]}>
+            Apprendre les notions de ce cours :
+          </Text>
+          <View style={styles.learnMoreRow}>
+            <Text style={styles.learnMoreLinkDisabled}>Flipcards</Text>
+            <Text style={styles.learnMoreSep}>·</Text>
+            <Text style={styles.learnMoreLinkDisabled}>Relations</Text>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -219,4 +245,35 @@ const styles = StyleSheet.create({
   },
   childChevron: { color: colors.muted, fontSize: 16 },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
+  learnMore: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  learnMoreLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  learnMoreLabelSpaced: { marginTop: 14 },
+  learnMoreRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
+  },
+  learnMoreLink: {
+    color: colors.accent,
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  learnMoreLinkDisabled: {
+    color: colors.muted,
+    fontWeight: "700",
+    fontSize: 14,
+    opacity: 0.5,
+  },
+  learnMoreSep: { color: colors.border, fontSize: 14 },
 });
