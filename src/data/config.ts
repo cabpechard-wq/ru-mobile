@@ -38,6 +38,14 @@ export const DICTIONNAIRE_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries.json
 export const MANUEL_ENDPOINT = `${SITE_BASE_URL}/manuel/chapters.json`;
 
 /**
+ * Exercices liés par chapitre (relations Notion Jurisprudence/Index portées
+ * par le manuel) : {ref: {title, jurisprudence: [...noms], notions: [...noms]}}.
+ * Même fichier que celui consommé côté web pour filtrer Flipcards/Relier/
+ * Enchaînements sur `?cours=DP-XXX`.
+ */
+export const MANUEL_EXERCISES_ENDPOINT = `${SITE_BASE_URL}/manuel/exercices.json`;
+
+/**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
  * mobile (`?format=json`), même session/entitlement que le web.
  */
