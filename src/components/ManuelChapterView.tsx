@@ -1,13 +1,79 @@
 import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCardsData } from "../data/CardsProvider";
 import { useChronologieData } from "../data/ChronologieProvider";
 import { useDictionnaireData } from "../data/DictionnaireProvider";
 import { useManuelData } from "../data/ManuelProvider";
-import { breadcrumb } from "../data/manuel";
+import { breadcrumb, refForChapterId } from "../data/manuel";
+import { useStudySession } from "../data/StudyContext";
 import { colors } from "../theme/colors";
 import { ErrorScreen, LoadingScreen } from "./DataStatus";
 import { Prose, type ProseLinkHandler } from "./Prose";
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: string }) {
+  const router = useRouter();
+  const manuel = useManuelData();
+  const cardsState = useCardsData();
+  const { setSession } = useStudySession();
+
+  const exercises =
+    manuel.status === "ready" ? manuel.exercises[chapterRef] : undefined;
+  const jurisprudence = exercises?.jurisprudence ?? [];
+  if (!jurisprudence.length) return null;
+
+  const startFlipcards = () => {
+    if (cardsState.status !== "ready") return;
+    const names = new Set(jurisprudence);
+    const cards = shuffle(
+      cardsState.data.allCards.filter((c) => names.has(c.recto))
+    );
+    if (!cards.length) return;
+    setSession({ cards, hint: `${title} · ${cards.length} carte(s)` });
+    router.push("/study");
+  };
+
+  return (
+    <View style={styles.exercises} accessibilityLabel="Exercices liés à ce chapitre">
+      <Text style={styles.exercisesTitle}>
+        Apprendre la jurisprudence de ce cours{" "}
+        <Text style={styles.exercisesCount}>({jurisprudence.length})</Text>
+      </Text>
+      <View style={styles.exercisesActions}>
+        <Pressable
+          style={styles.exerciseBtn}
+          disabled={cardsState.status !== "ready"}
+          onPress={startFlipcards}
+        >
+          <Text style={styles.exerciseBtnText}>Flipcards</Text>
+        </Pressable>
+        <Pressable
+          style={styles.exerciseBtn}
+          onPress={() => router.push({ pathname: "/relier", params: { cours: chapterRef } })}
+        >
+          <Text style={styles.exerciseBtnText}>Relier</Text>
+        </Pressable>
+        <Pressable
+          style={styles.exerciseBtn}
+          onPress={() =>
+            router.push({ pathname: "/enchainements", params: { cours: chapterRef } })
+          }
+        >
+          <Text style={styles.exerciseBtnText}>Enchaînements logiques</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 export function ManuelChapterView({
   chapterId,
@@ -80,6 +146,11 @@ export function ManuelChapterView({
         </View>
       ) : null}
 
+      {(() => {
+        const ref = refForChapterId(chapter.id);
+        return ref ? <ChapterExercises chapterRef={ref} title={chapter.title} /> : null;
+      })()}
+
       {chapter.children.length ? (
         <View style={styles.children}>
           {!isRoot && chapter.blocks.length ? (
@@ -141,4 +212,27 @@ const styles = StyleSheet.create({
   childTitle: { color: colors.ink, fontWeight: "600", fontSize: 14, flexShrink: 1 },
   childChevron: { color: colors.muted, fontSize: 16 },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
+  exercises: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  exercisesTitle: { color: colors.ink, fontWeight: "700", fontSize: 14 },
+  exercisesCount: { color: colors.muted, fontWeight: "600" },
+  exercisesActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  exerciseBtn: {
+    backgroundColor: "#fff",
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  exerciseBtnText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
 });
