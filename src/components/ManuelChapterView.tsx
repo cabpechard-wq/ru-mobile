@@ -10,9 +10,14 @@ import {
 import { useCardsData } from "../data/CardsProvider";
 import { useChronologieData } from "../data/ChronologieProvider";
 import { useDictionnaireData } from "../data/DictionnaireProvider";
+import { useEnchainementsData } from "../data/EnchainementsProvider";
+import { useEnchainementsSession } from "../data/EnchainementsSessionContext";
+import { pickRandomChain, shuffledOrder } from "../data/enchainements";
 import { useManuelData } from "../data/ManuelProvider";
 import { breadcrumb, refForChapterId } from "../data/manuel";
 import { neighborsForChapter } from "../data/manuelNav";
+import { useRelierData } from "../data/RelierProvider";
+import { useRelierSession } from "../data/RelierSessionContext";
 import { SECTION } from "../data/sections";
 import { useStudySession } from "../data/StudyContext";
 import { colors } from "../theme/colors";
@@ -34,6 +39,10 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
   const manuel = useManuelData();
   const cardsState = useCardsData();
   const { setSession } = useStudySession();
+  const relierState = useRelierData();
+  const { setSession: setRelierSession } = useRelierSession();
+  const enchainementsState = useEnchainementsData();
+  const { setSession: setEnchainementsSession } = useEnchainementsSession();
 
   const exercises =
     manuel.status === "ready" ? manuel.exercises[chapterRef] : undefined;
@@ -49,6 +58,31 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
     if (!cards.length) return;
     setSession({ cards, hint: `${title} · ${cards.length} carte(s)` });
     router.push("/study");
+  };
+
+  const startRelier = () => {
+    if (relierState.status !== "ready") return;
+    const names = new Set(jurisprudence);
+    const items = shuffle(
+      relierState.data.allItems.filter((i) => names.has(i.recto))
+    );
+    if (items.length < 2) return;
+    setRelierSession({ items, pack: "arrets", pool: items, batchSize: items.length });
+    router.push("/relier/session");
+  };
+
+  const startEnchainements = () => {
+    if (enchainementsState.status !== "ready") return;
+    const decisions = enchainementsState.decisions.filter((d) =>
+      jurisprudence.includes(d.nom)
+    );
+    const chain = pickRandomChain(decisions);
+    if (!chain) {
+      router.push({ pathname: "/enchainements", params: { cours: chapterRef } });
+      return;
+    }
+    setEnchainementsSession({ items: shuffledOrder(chain) });
+    router.push("/enchainements/session");
   };
 
   return (
@@ -67,15 +101,15 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
         </Pressable>
         <Pressable
           style={styles.exerciseBtn}
-          onPress={() => router.push({ pathname: "/relier", params: { cours: chapterRef } })}
+          disabled={relierState.status !== "ready"}
+          onPress={startRelier}
         >
           <Text style={styles.exerciseBtnText}>Relier</Text>
         </Pressable>
         <Pressable
           style={styles.exerciseBtn}
-          onPress={() =>
-            router.push({ pathname: "/enchainements", params: { cours: chapterRef } })
-          }
+          disabled={enchainementsState.status !== "ready"}
+          onPress={startEnchainements}
         >
           <Text style={styles.exerciseBtnText}>Enchaînements logiques</Text>
         </Pressable>
