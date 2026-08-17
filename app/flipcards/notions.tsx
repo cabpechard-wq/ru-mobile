@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import React from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -14,7 +14,15 @@ import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
 import { type Card } from "../../src/data/cards";
 import { PAGE_TITLE_NOTIONS } from "../../src/data/config";
+import {
+  buildCoursIndex,
+  catalogPresentFor,
+  coursLabelsForTerm,
+  type CoursTheme,
+} from "../../src/data/coursThemes";
+import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
 import { useFlipcardsDicoData } from "../../src/data/FlipcardsDicoProvider";
+import { useManuelData } from "../../src/data/ManuelProvider";
 import { SECTION } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
 import { useFilters } from "../../src/hooks/useFilters";
@@ -40,6 +48,10 @@ function FlipcardsNotionsContent({
   presentImportanceLevels,
   colorForLabel,
   source,
+  coursCatalog,
+  labelsForCard,
+  initialCoursTheme,
+  chapterHint,
 }: {
   allCards: Card[];
   allThemes: string[];
@@ -47,9 +59,24 @@ function FlipcardsNotionsContent({
   presentImportanceLevels: number[];
   colorForLabel: (label: string, group: "theme" | "notion") => string;
   source: "demo" | "member";
+  coursCatalog: CoursTheme[];
+  labelsForCard: (card: Card) => string[];
+  initialCoursTheme: string;
+  chapterHint?: string;
 }) {
   const router = useRouter();
   const { setSession } = useStudySession();
+  const [selectedCours, setSelectedCours] = useState(initialCoursTheme);
+
+  useEffect(() => {
+    if (initialCoursTheme) setSelectedCours(initialCoursTheme);
+  }, [initialCoursTheme]);
+
+  const cardsForCours = useMemo(() => {
+    if (!selectedCours) return allCards;
+    return allCards.filter((c) => labelsForCard(c).includes(selectedCours));
+  }, [allCards, labelsForCard, selectedCours]);
+
   const {
     selectedThemes,
     selectedNotions,
@@ -60,7 +87,13 @@ function FlipcardsNotionsContent({
     toggle,
     clear,
     selectionHint,
-  } = useFilters(allCards);
+  } = useFilters(cardsForCours);
+
+  const hintPrefix = selectedCours
+    ? selectionHint.startsWith("Tout le set")
+      ? selectedCours
+      : `${selectedCours} · ${selectionHint}`
+    : selectionHint;
 
   const enterStudy = (cards: Card[], hint: string) => {
     if (!cards.length) return;
@@ -75,7 +108,7 @@ function FlipcardsNotionsContent({
 
   const startAll = () => {
     const cards = shuffle(filteredCards);
-    enterStudy(cards, `${selectionHint} · ${cards.length} carte(s)`);
+    enterStudy(cards, `${hintPrefix} · ${cards.length} carte(s)`);
   };
 
   const startRandom10 = () => {
@@ -84,7 +117,7 @@ function FlipcardsNotionsContent({
     const hint =
       "10 au hasard" +
       (filteredCards.length < 10 ? ` (${cards.length})` : "") +
-      ` · ${selectionHint}`;
+      ` · ${hintPrefix}`;
     enterStudy(cards, hint);
   };
 
@@ -93,13 +126,41 @@ function FlipcardsNotionsContent({
       <Text style={styles.kicker}>Flipcards</Text>
       <Text style={styles.title}>{PAGE_TITLE_NOTIONS}</Text>
       <Text style={styles.sub}>
-        Lettres (thèmes) — comme sur le web. Laissez vide pour tout le set (
-        {allCards.length} cartes
+        {chapterHint
+          ? `${chapterHint}. `
+          : ""}
+        Thème = pages du Cours (un seul choix), puis lettre — comme sur le web.
+        Laissez vide pour tout le set ({allCards.length} cartes
         {source === "demo" ? " · démo" : ""}).
       </Text>
 
       <View style={styles.card}>
-        <Accordion title="1 — Lettres (1 seul choix)" onClear={() => clear("theme")}>
+        {coursCatalog.length ? (
+          <Accordion
+            title="1 — Thèmes (1 seul choix)"
+            onClear={() => setSelectedCours("")}
+            initiallyOpen={!selectedCours}
+          >
+            <View style={styles.chips}>
+              {coursCatalog.map((t) => (
+                <Chip
+                  key={t.label}
+                  label={t.label}
+                  colorName={t.color}
+                  selected={selectedCours === t.label}
+                  onPress={() =>
+                    setSelectedCours((prev) => (prev === t.label ? "" : t.label))
+                  }
+                />
+              ))}
+            </View>
+          </Accordion>
+        ) : null}
+
+        <Accordion
+          title={`${coursCatalog.length ? "2" : "1"} — Lettres (1 seul choix)`}
+          onClear={() => clear("theme")}
+        >
           <View style={styles.chips}>
             {allThemes.length ? (
               allThemes.map((t) => (
@@ -119,7 +180,10 @@ function FlipcardsNotionsContent({
         </Accordion>
 
         {allNotions.length ? (
-          <Accordion title="2 — Notions" onClear={() => clear("notion")}>
+          <Accordion
+            title={`${coursCatalog.length ? "3" : "2"} — Notions`}
+            onClear={() => clear("notion")}
+          >
             <View style={styles.chips}>
               {allNotions.map((n) => (
                 <Chip
@@ -136,7 +200,10 @@ function FlipcardsNotionsContent({
         ) : null}
 
         {presentImportanceLevels.length ? (
-          <Accordion title="3 — Importance" onClear={() => clear("importance")}>
+          <Accordion
+            title={`${coursCatalog.length ? "4" : "3"} — Importance`}
+            onClear={() => clear("importance")}
+          >
             <View style={styles.chips}>
               {presentImportanceLevels.map((lvl) => (
                 <Chip
@@ -157,7 +224,7 @@ function FlipcardsNotionsContent({
             <Text style={styles.count}>
               <Text style={styles.countNum}>{count}</Text> carte(s)
             </Text>
-            <Text style={styles.hint}>{selectionHint}</Text>
+            <Text style={styles.hint}>{hintPrefix}</Text>
           </View>
           <View style={styles.actions}>
             <Pressable
@@ -182,7 +249,28 @@ function FlipcardsNotionsContent({
 }
 
 export default function FlipcardsNotionsScreen() {
+  const { cours } = useLocalSearchParams<{ cours?: string }>();
   const cardsState = useFlipcardsDicoData();
+  const dico = useDictionnaireData();
+  const manuel = useManuelData();
+
+  const chapterExercises =
+    cours && manuel.status === "ready" ? manuel.exercises[cours] : undefined;
+
+  const { catalog, labelsForCard } = useMemo(() => {
+    const empty = {
+      catalog: [] as CoursTheme[],
+      labelsForCard: (_card: Card) => [] as string[],
+    };
+    if (dico.status !== "ready" || cardsState.status !== "ready") return empty;
+    const { byTerm, catalog: all } = buildCoursIndex(dico.entries);
+    const labelsForCard = (card: Card) =>
+      coursLabelsForTerm(byTerm, card.recto, card.id);
+    const catalog = catalogPresentFor(all, (label) =>
+      cardsState.data.allCards.some((c) => labelsForCard(c).includes(label))
+    );
+    return { catalog, labelsForCard };
+  }, [dico, cardsState]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -199,6 +287,14 @@ export default function FlipcardsNotionsScreen() {
           presentImportanceLevels={cardsState.data.presentImportanceLevels}
           colorForLabel={cardsState.data.colorForLabel}
           source={cardsState.source}
+          coursCatalog={catalog}
+          labelsForCard={labelsForCard}
+          initialCoursTheme={chapterExercises?.title ?? ""}
+          chapterHint={
+            chapterExercises
+              ? `Fonds du chapitre « ${chapterExercises.title} »`
+              : undefined
+          }
         />
       ) : null}
     </SafeAreaView>

@@ -1,47 +1,89 @@
-import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useMemo, useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
 import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
+import {
+  DEFAULT_RELIER_SERIES,
+  RelierSeriesPicker,
+  resolveRelierBatchSize,
+  type RelierSeriesSize,
+} from "../../src/components/RelierSeriesPicker";
 import { PAGE_TITLE_NOTIONS } from "../../src/data/config";
+import {
+  buildCoursIndex,
+  catalogPresentFor,
+  coursLabelsForTerm,
+  type CoursTheme,
+} from "../../src/data/coursThemes";
+import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
+import { useManuelData } from "../../src/data/ManuelProvider";
 import { useRelierDicoData } from "../../src/data/RelierDicoProvider";
-import { filterRelierItems, pickBatch } from "../../src/data/relier";
+import { filterRelierItems, pickBatch, type RelierItem } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
-const BATCH_SIZES = [3, 5, 10];
-
 export default function RelierNotionsSetupScreen() {
   const router = useRouter();
+  const { cours } = useLocalSearchParams<{ cours?: string }>();
   const relierState = useRelierDicoData();
+  const dico = useDictionnaireData();
+  const manuel = useManuelData();
   const { setSession } = useRelierSession();
-  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
+  const [selectedLetters, setSelectedLetters] = useState<string[]>([]);
+  const [selectedCours, setSelectedCours] = useState("");
+  const [seriesSize, setSeriesSize] =
+    useState<RelierSeriesSize>(DEFAULT_RELIER_SERIES);
+
+  const chapterExercises =
+    cours && manuel.status === "ready" ? manuel.exercises[cours] : undefined;
+
+  useEffect(() => {
+    if (chapterExercises?.title) setSelectedCours(chapterExercises.title);
+  }, [chapterExercises?.title]);
+
+  const { catalog, labelsForItem } = useMemo(() => {
+    const empty = {
+      catalog: [] as CoursTheme[],
+      labelsForItem: (_item: RelierItem) => [] as string[],
+    };
+    if (dico.status !== "ready" || relierState.status !== "ready") return empty;
+    const { byTerm, catalog: all } = buildCoursIndex(dico.entries);
+    const labelsForItem = (item: RelierItem) =>
+      coursLabelsForTerm(byTerm, item.recto, item.id, item.slug || "");
+    const catalog = catalogPresentFor(all, (label) =>
+      relierState.data.allItems.some((i) => labelsForItem(i).includes(label))
+    );
+    return { catalog, labelsForItem };
+  }, [dico, relierState]);
 
   const filteredItems = useMemo(() => {
     if (relierState.status !== "ready") return [];
-    return filterRelierItems(relierState.data.allItems, {
-      themes: selectedThemes,
+    const byLetter = filterRelierItems(relierState.data.allItems, {
+      themes: selectedLetters,
     });
-  }, [relierState, selectedThemes]);
+    if (!selectedCours) return byLetter;
+    return byLetter.filter((i) => labelsForItem(i).includes(selectedCours));
+  }, [relierState, selectedLetters, selectedCours, labelsForItem]);
 
-  const start = (size: number) => {
-    if (filteredItems.length < 2) return;
+  const start = () => {
+    const n = resolveRelierBatchSize(seriesSize, filteredItems.length);
+    if (n < 2) return;
     setSession({
-      items: pickBatch(filteredItems, size),
+      items: pickBatch(filteredItems, n),
       pack: "notions",
       pool: filteredItems,
-      batchSize: size,
+      batchSize: n,
     });
     router.push("/relier/session");
   };
 
-  const toggleTheme = (t: string) => {
-    // Un seul thème (lettre), comme Flipcards notions
-    setSelectedThemes((prev) => (prev.includes(t) ? [] : [t]));
+  const toggleLetter = (t: string) => {
+    setSelectedLetters((prev) => (prev.includes(t) ? [] : [t]));
   };
 
   return (
@@ -56,14 +98,41 @@ export default function RelierNotionsSetupScreen() {
           <Text style={styles.kicker}>Relations</Text>
           <Text style={styles.title}>Relations — Grandes notions</Text>
           <Text style={styles.sub}>
+            {chapterExercises
+              ? `Fonds du chapitre « ${chapterExercises.title} ». `
+              : ""}
             {PAGE_TITLE_NOTIONS}. Reliez chaque notion à sa définition.
             {relierState.source === "demo" ? " (démo)" : ""}
           </Text>
 
           <View style={styles.card}>
+            {catalog.length ? (
+              <Accordion
+                title="Thèmes (1 seul choix)"
+                onClear={() => setSelectedCours("")}
+                initiallyOpen={!selectedCours}
+              >
+                <View style={styles.chips}>
+                  {catalog.map((t) => (
+                    <Chip
+                      key={t.label}
+                      label={t.label}
+                      colorName={t.color}
+                      selected={selectedCours === t.label}
+                      onPress={() =>
+                        setSelectedCours((prev) =>
+                          prev === t.label ? "" : t.label
+                        )
+                      }
+                    />
+                  ))}
+                </View>
+              </Accordion>
+            ) : null}
+
             <Accordion
               title="Lettres (1 seul choix)"
-              onClear={() => setSelectedThemes([])}
+              onClear={() => setSelectedLetters([])}
               initiallyOpen
             >
               <View style={styles.chips}>
@@ -72,8 +141,8 @@ export default function RelierNotionsSetupScreen() {
                     <Chip
                       key={t}
                       label={t}
-                      selected={selectedThemes.includes(t)}
-                      onPress={() => toggleTheme(t)}
+                      selected={selectedLetters.includes(t)}
+                      onPress={() => toggleLetter(t)}
                     />
                   ))
                 ) : (
@@ -86,23 +155,13 @@ export default function RelierNotionsSetupScreen() {
               <Text style={styles.countNum}>{filteredItems.length}</Text> notion(s)
             </Text>
 
-            <Text style={styles.cardTitle}>Choisir une série</Text>
-            {BATCH_SIZES.map((size) => {
-              const disabled = filteredItems.length < Math.min(size, 2);
-              return (
-                <Pressable
-                  key={size}
-                  testID={`relier-notions-batch-${size}`}
-                  disabled={disabled}
-                  onPress={() => start(size)}
-                  style={[styles.btn, disabled && styles.btnDisabled]}
-                >
-                  <Text style={styles.btnText}>
-                    Série de {Math.min(size, Math.max(filteredItems.length, 0))}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            <RelierSeriesPicker
+              selected={seriesSize}
+              onSelect={setSeriesSize}
+              poolLength={filteredItems.length}
+              onStart={start}
+              startTestID="relier-notions-start"
+            />
           </View>
         </ScrollView>
       ) : null}
@@ -148,13 +207,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontFamily: "serif",
   },
-  cardTitle: { fontWeight: "700", color: colors.ink, marginTop: 4 },
-  btn: {
-    backgroundColor: colors.accent,
-    borderRadius: colors.radius,
-    paddingVertical: 13,
-    alignItems: "center",
-  },
-  btnDisabled: { opacity: 0.35 },
-  btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

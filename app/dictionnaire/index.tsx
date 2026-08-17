@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Accordion } from "../../src/components/Accordion";
+import { Chip } from "../../src/components/Chip";
 import { ErrorScreen } from "../../src/components/DataStatus";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
@@ -23,6 +24,10 @@ import {
   splitCoursLinks,
   type DictEntry,
 } from "../../src/data/dictionnaire";
+import {
+  collectDictionaryThemes,
+  filterEntriesByCoursTheme,
+} from "../../src/data/coursThemes";
 import { SECTION } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
@@ -107,6 +112,7 @@ export default function DictionnaireScreen() {
   const chrono = useChronologieData();
   const manuel = useManuelData();
   const [query, setQuery] = useState("");
+  const [theme, setTheme] = useState("");
 
   const knownDecisionIds = useMemo(
     () => (chrono.status === "ready" ? new Set(chrono.decisions.map((d) => d.id)) : null),
@@ -117,10 +123,18 @@ export default function DictionnaireScreen() {
     [manuel]
   );
 
+  const themes = useMemo(() => {
+    if (state.status !== "ready") return [];
+    return collectDictionaryThemes(state.entries);
+  }, [state]);
+
   const filtered = useMemo(() => {
     if (state.status !== "ready") return [];
-    return searchEntries(state.entries, query);
-  }, [state, query]);
+    return searchEntries(
+      filterEntriesByCoursTheme(state.entries, theme),
+      query
+    );
+  }, [state, query, theme]);
   const groups = useMemo(() => groupByLetter(filtered), [filtered]);
 
   return (
@@ -149,9 +163,32 @@ export default function DictionnaireScreen() {
             autoCapitalize="none"
           />
 
+          {themes.length ? (
+            <Accordion
+              title={theme ? `Thème : ${theme}` : "Thème (tous)"}
+              onClear={theme ? () => setTheme("") : undefined}
+            >
+              <View style={styles.chips}>
+                <Chip
+                  label="Tous les thèmes"
+                  selected={!theme}
+                  onPress={() => setTheme("")}
+                />
+                {themes.map((t) => (
+                  <Chip
+                    key={t}
+                    label={t}
+                    selected={theme === t}
+                    onPress={() => setTheme((prev) => (prev === t ? "" : t))}
+                  />
+                ))}
+              </View>
+            </Accordion>
+          ) : null}
+
           {groups.map((g) => (
             <Accordion
-              key={`${g.letter}-${query ? "search" : "browse"}`}
+              key={`${g.letter}-${query ? "search" : "browse"}-${theme || "all"}`}
               title={`${g.letter} (${g.items.length})`}
               initiallyOpen={!!query.trim()}
             >
@@ -209,6 +246,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     marginBottom: 14,
   },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 7, paddingBottom: 8 },
   groupList: { gap: 10 },
   entry: {
     borderWidth: 1,
