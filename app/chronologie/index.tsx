@@ -6,39 +6,43 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Accordion } from "../../src/components/Accordion";
-import { Chip } from "../../src/components/Chip";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { GrandesFiltresBar } from "../../src/components/GrandesFiltresBar";
 import { PageHeader } from "../../src/components/PageHeader";
-import { themeLabel, uniqueSorted } from "../../src/data/arrets";
 import {
   buildById,
   EMPTY_CHRONO_FILTERS,
   filterChronologie,
   groupByDecade,
   relationCount,
+  decadeKey,
   type ChronoFilters,
 } from "../../src/data/chronologie";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { displayNom, starsLabel, type Decision } from "../../src/data/decisions";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 function DecisionRow({
   decision,
   relCount,
+  highlighted,
   onPress,
 }: {
   decision: Decision;
   relCount: number;
+  highlighted?: boolean;
   onPress: () => void;
 }) {
   return (
-    <Pressable testID={`decision-row-${decision.id}`} onPress={onPress} style={styles.row}>
+    <Pressable
+      testID={`decision-row-${decision.id}`}
+      onPress={onPress}
+      style={[styles.row, highlighted && styles.rowHighlight]}
+    >
       <View style={styles.timelineDotCol}>
         <View style={[styles.timelineDot, relCount > 0 && styles.timelineDotLinked]} />
         <View style={styles.timelineStem} />
@@ -82,10 +86,12 @@ function normalizeDecadeParam(raw: string | string[] | undefined): string | null
 
 export default function ChronologieListScreen() {
   const router = useRouter();
-  const { decade: decadeParam } = useLocalSearchParams<{ decade?: string }>();
+  const { decade: decadeParam, id: idParam } = useLocalSearchParams<{
+    decade?: string;
+    id?: string;
+  }>();
   const state = useChronologieData();
   const [filters, setFilters] = useState<ChronoFilters>(EMPTY_CHRONO_FILTERS);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const initialDecade = normalizeDecadeParam(decadeParam) || DEFAULT_DECADE;
   const [activeDecade, setActiveDecade] = useState<string | null>(initialDecade);
 
@@ -99,20 +105,21 @@ export default function ChronologieListScreen() {
     [state]
   );
 
-  const facets = useMemo(() => {
-    if (state.status !== "ready") {
-      return { juridictions: [] as string[], themes: [] as string[], notions: [] as string[] };
-    }
-    const juridictions = uniqueSorted(state.decisions.map((d) => d.juridiction));
-    const themes = uniqueSorted(state.decisions.map((d) => themeLabel(d.theme) || d.theme));
-    const notions = uniqueSorted(state.decisions.flatMap((d) => d.notions || []));
-    return { juridictions, themes, notions };
-  }, [state]);
+  useEffect(() => {
+    if (state.status !== "ready" || !idParam) return;
+    const raw = Array.isArray(idParam) ? idParam[0] : idParam;
+    const d =
+      state.decisions.find((x) => x.id === raw) ||
+      state.decisions.find((x) => x.slugFiche === raw);
+    if (d) setActiveDecade(decadeKey(d.annee));
+  }, [state, idParam]);
 
   const filtered = useMemo(() => {
     if (state.status !== "ready") return [];
     return filterChronologie(state.decisions, byId, filters);
   }, [state, byId, filters]);
+
+  const highlightId = Array.isArray(idParam) ? idParam[0] : idParam;
 
   const groups = useMemo(() => groupByDecade(filtered), [filtered]);
   const visibleGroups = activeDecade
@@ -142,7 +149,9 @@ export default function ChronologieListScreen() {
 
   const anyFilter =
     !!filters.query.trim() ||
+    !!filters.reference.trim() ||
     !!filters.juridiction ||
+    !!filters.formation ||
     !!filters.theme ||
     !!filters.notion ||
     filters.importance != null ||
@@ -152,7 +161,7 @@ export default function ChronologieListScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.chronologie]} />
+      <PageHeader trail={[...TRAIL.chronologie]} />
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -183,122 +192,36 @@ export default function ChronologieListScreen() {
             les pastilles signalent les décisions liées.
           </Text>
 
-          <TextInput
-            style={styles.search}
-            placeholder="Recherche (nom, thème, notion…)"
-            placeholderTextColor={colors.muted}
-            value={filters.query}
-            onChangeText={(v) => setFilter("query", v)}
-            autoCapitalize="none"
-          />
-
-          <Pressable
-            onPress={() => setFiltersOpen((v) => !v)}
-            style={styles.filterToggle}
-          >
-            <Text style={styles.filterToggleText}>
-              {filtersOpen ? "Masquer les filtres" : "Filtres avancés"}
-              {anyFilter ? " · actifs" : ""}
-            </Text>
-          </Pressable>
-
-          {filtersOpen ? (
-            <View style={styles.filtersCard}>
-              <Accordion title="Juridictions" onClear={() => setFilter("juridiction", null)}>
-                <View style={styles.chips}>
-                  {facets.juridictions.map((j) => (
-                    <Chip
-                      key={j}
-                      label={j}
-                      selected={filters.juridiction === j}
-                      onPress={() =>
-                        setFilter("juridiction", filters.juridiction === j ? null : j)
-                      }
-                    />
-                  ))}
-                </View>
-              </Accordion>
-              <Accordion title="Thèmes" onClear={() => setFilter("theme", null)}>
-                <View style={styles.chips}>
-                  {facets.themes.map((t) => (
-                    <Chip
-                      key={t}
-                      label={t}
-                      selected={filters.theme === t}
-                      onPress={() => setFilter("theme", filters.theme === t ? null : t)}
-                    />
-                  ))}
-                </View>
-              </Accordion>
-              <Accordion title="Notions" onClear={() => setFilter("notion", null)}>
-                <View style={styles.chips}>
-                  {facets.notions.map((n) => (
-                    <Chip
-                      key={n}
-                      label={n}
-                      selected={filters.notion === n}
-                      onPress={() => setFilter("notion", filters.notion === n ? null : n)}
-                    />
-                  ))}
-                </View>
-              </Accordion>
-              <Accordion title="Importance" onClear={() => setFilter("importance", null)}>
-                <View style={styles.chips}>
-                  {[1, 2, 3, 4].map((lvl) => (
-                    <Chip
-                      key={lvl}
-                      label={starsLabel(lvl)}
-                      selected={filters.importance === lvl}
-                      onPress={() =>
-                        setFilter("importance", filters.importance === lvl ? null : lvl)
-                      }
-                    />
-                  ))}
-                </View>
-              </Accordion>
-              <Text style={styles.periodLabel}>Période</Text>
-              <View style={styles.periodRow}>
-                <TextInput
-                  style={styles.periodInput}
-                  placeholder="Début"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="number-pad"
-                  value={filters.yearFrom}
-                  onChangeText={(v) => setFilter("yearFrom", v)}
-                />
-                <Text style={styles.periodSep}>→</Text>
-                <TextInput
-                  style={styles.periodInput}
-                  placeholder="Fin"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="number-pad"
-                  value={filters.yearTo}
-                  onChangeText={(v) => setFilter("yearTo", v)}
-                />
-              </View>
-              <Pressable
-                onPress={() => setFilter("relatedOnly", !filters.relatedOnly)}
-                style={[
-                  styles.relatedToggle,
-                  filters.relatedOnly && styles.relatedToggleOn,
-                ]}
-              >
-                <Text
+          <GrandesFiltresBar
+            decisions={state.decisions}
+            filters={filters}
+            onChange={setFilters}
+            extra={
+              <>
+                <Pressable
+                  onPress={() => setFilter("relatedOnly", !filters.relatedOnly)}
                   style={[
-                    styles.relatedToggleText,
-                    filters.relatedOnly && styles.relatedToggleTextOn,
+                    styles.relatedToggle,
+                    filters.relatedOnly && styles.relatedToggleOn,
                   ]}
                 >
-                  Uniquement les décisions liées
-                </Text>
-              </Pressable>
-              {anyFilter ? (
-                <Pressable onPress={resetFilters} style={styles.resetBtn}>
-                  <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+                  <Text
+                    style={[
+                      styles.relatedToggleText,
+                      filters.relatedOnly && styles.relatedToggleTextOn,
+                    ]}
+                  >
+                    Uniquement les décisions liées
+                  </Text>
                 </Pressable>
-              ) : null}
-            </View>
-          ) : null}
+                {anyFilter ? (
+                  <Pressable onPress={resetFilters} style={styles.resetBtn}>
+                    <Text style={styles.resetText}>Réinitialiser les filtres</Text>
+                  </Pressable>
+                ) : null}
+              </>
+            }
+          />
 
           {groups.length ? (
             <ScrollView
@@ -352,6 +275,10 @@ export default function ChronologieListScreen() {
                     key={d.id}
                     decision={d}
                     relCount={relationCount(byId, d.id)}
+                    highlighted={
+                      !!highlightId &&
+                      (d.id === highlightId || d.slugFiche === highlightId)
+                    }
                     onPress={() =>
                       router.push(`/arrets/${d.slugFiche || d.id}` as never)
                     }
@@ -487,6 +414,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     paddingBottom: 4,
+  },
+  rowHighlight: {
+    backgroundColor: colors.card,
+    borderRadius: colors.radius,
+    marginHorizontal: -6,
+    paddingHorizontal: 6,
+    paddingTop: 4,
   },
   timelineDotCol: { width: 16, alignItems: "center" },
   timelineDot: {

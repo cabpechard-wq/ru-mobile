@@ -1,3 +1,5 @@
+import { sortFr } from "./sortFr";
+
 /** Parse la réponse Worker : JSON (`?format=json`) ou HTML membre (`const DATA = […]`). */
 
 function decodeHtml(s: string): string {
@@ -96,9 +98,7 @@ function uniqueLabels(cards: Record<string, unknown>[], key: string): string[] {
       if (s) set.add(s);
     });
   });
-  return [...set].sort((a, b) =>
-    a.localeCompare(b, "fr", { sensitivity: "base" })
-  );
+  return [...set].sort(sortFr);
 }
 
 function normalizeCardRows(rows: unknown[]): Record<string, unknown>[] {

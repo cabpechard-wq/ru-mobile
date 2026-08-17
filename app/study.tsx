@@ -17,7 +17,7 @@ import { useChronologieData } from "../src/data/ChronologieProvider";
 import { cardImportanceLevel, starsLabel, type Card } from "../src/data/cards";
 import { displayNom, type Decision } from "../src/data/decisions";
 import { useDictionnaireData } from "../src/data/DictionnaireProvider";
-import { SECTION } from "../src/data/sections";
+import { TRAIL } from "../src/data/sections";
 import { useStudySession } from "../src/data/StudyContext";
 import { colors } from "../src/theme/colors";
 
@@ -56,8 +56,8 @@ export default function StudyScreen() {
   const chrono = useChronologieData();
   const dico = useDictionnaireData();
   const pack = session.pack || "arrets";
-  const sectionLabel =
-    pack === "notions" ? SECTION.flipcardsNotions : SECTION.flipcardsArrets;
+  const trail =
+    pack === "notions" ? TRAIL.flipcardsNotions : TRAIL.flipcardsArrets;
   const base = session.cards;
   const selectedIds = useMemo(() => {
     if (session.selectedIds?.length) return new Set(session.selectedIds);
@@ -112,6 +112,7 @@ export default function StudyScreen() {
     objet?: string;
     portee?: string;
     definition?: string;
+    stars?: string;
   }[] = useMemo(() => {
     if (pack === "notions") {
       if (dico.status !== "ready") return [];
@@ -129,6 +130,7 @@ export default function StudyScreen() {
         href: `/arrets/${d.id}`,
         objet: d.objet,
         portee: d.portee,
+        stars: starsLabel(d.importance ?? 0),
       }));
     }
     if (cardsState.status === "ready") {
@@ -138,6 +140,7 @@ export default function StudyScreen() {
         href: `/arrets/${cardKey(c)}`,
         objet: c.objet,
         portee: c.portee,
+        stars: starsLabel(cardImportanceLevel(c)),
       }));
     }
     return [];
@@ -231,7 +234,7 @@ export default function StudyScreen() {
   if (!base.length || !current) {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[sectionLabel, "Étudier"]} />
+        <PageHeader trail={[...trail, "Étudier"]} />
         <Text style={styles.empty}>Aucune carte pour ces filtres.</Text>
       </SafeAreaView>
     );
@@ -240,7 +243,7 @@ export default function StudyScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <PageHeader
-        trail={[sectionLabel, "Étudier"]}
+        trail={[...trail, "Étudier"]}
         right={
           <Text style={styles.summary} numberOfLines={2}>
             {session.hint}
@@ -377,6 +380,7 @@ export default function StudyScreen() {
               >
                 <Text style={styles.asideRowText} numberOfLines={2}>
                   {item.label}
+                  {pack === "arrets" && item.stars ? `  ${item.stars}` : ""}
                 </Text>
                 {pack === "arrets" ? (
                   <>

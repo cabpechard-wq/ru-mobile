@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -8,16 +8,23 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Accordion } from "../../src/components/Accordion";
-import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { GrandesFiltresBar } from "../../src/components/GrandesFiltresBar";
 import { PageHeader } from "../../src/components/PageHeader";
+import {
+  decisionFromCard,
+  EMPTY_ARRETS_FILTERS,
+  filterDecisions,
+  hasActiveArretsFilters,
+  matchDecision,
+  type ArretsFilters,
+} from "../../src/data/arrets";
 import { useCardsData } from "../../src/data/CardsProvider";
 import { PAGE_TITLE } from "../../src/data/config";
 import { type Card } from "../../src/data/cards";
-import { SECTION } from "../../src/data/sections";
+import { useChronologieData } from "../../src/data/ChronologieProvider";
+import { TRAIL } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
-import { useFilters } from "../../src/hooks/useFilters";
 import { colors } from "../../src/theme/colors";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -29,38 +36,37 @@ function shuffle<T>(arr: T[]): T[] {
   return out;
 }
 
-function starsLabel(level: number): string {
-  return level ? "★".repeat(level) : "";
-}
-
 function FlipcardsContent({
   allCards,
-  allThemes,
-  allNotions,
-  presentImportanceLevels,
-  colorForLabel,
   source,
 }: {
   allCards: Card[];
-  allThemes: string[];
-  allNotions: string[];
-  presentImportanceLevels: number[];
-  colorForLabel: (label: string, group: "theme" | "notion") => string;
   source: "demo" | "member";
 }) {
   const router = useRouter();
   const { setSession } = useStudySession();
-  const {
-    selectedThemes,
-    selectedNotions,
-    selectedImportance,
-    filteredCards,
-    count,
-    isChipEnabled,
-    toggle,
-    clear,
-    selectionHint,
-  } = useFilters(allCards);
+  const chrono = useChronologieData();
+  const [filters, setFilters] = useState<ArretsFilters>(EMPTY_ARRETS_FILTERS);
+  const chronoDecisions = chrono.status === "ready" ? chrono.decisions : [];
+
+  const mapped = useMemo(
+    () =>
+      allCards.map((c) =>
+        decisionFromCard(c, matchDecision(chronoDecisions, { id: c.id, nom: c.recto }))
+      ),
+    [allCards, chronoDecisions]
+  );
+
+  const filteredCards = useMemo(() => {
+    if (!hasActiveArretsFilters(filters)) return allCards;
+    const kept = new Set(filterDecisions(mapped, filters).map((d) => d.id));
+    return allCards.filter((c) => kept.has(c.id));
+  }, [allCards, mapped, filters]);
+
+  const count = filteredCards.length;
+  const selectionHint = hasActiveArretsFilters(filters)
+    ? "Filtres Grandes décisions"
+    : "Tout le set";
 
   const enterStudy = (cards: Card[], hint: string) => {
     if (!cards.length) return;
@@ -93,68 +99,18 @@ function FlipcardsContent({
       <Text style={styles.kicker}>Flipcards</Text>
       <Text style={styles.title}>{PAGE_TITLE}</Text>
       <Text style={styles.sub}>
-        1 thème (choix unique), notions et importance — comme sur le web.
-        Laissez vide pour tout le set ({allCards.length} cartes
+        Recherche, référence et filtre avancé — comme sur le site. Laissez vide
+        pour tout le set ({allCards.length} cartes
         {source === "demo" ? " · démo" : ""}).
       </Text>
 
+      <GrandesFiltresBar
+        decisions={mapped}
+        filters={filters}
+        onChange={setFilters}
+      />
+
       <View style={styles.card}>
-        <Accordion title="1 — Thèmes (1 seul choix)" onClear={() => clear("theme")}>
-          <View style={styles.chips}>
-            {allThemes.length ? (
-              allThemes.map((t) => (
-                <Chip
-                  key={t}
-                  label={t}
-                  colorName={colorForLabel(t, "theme")}
-                  selected={selectedThemes.includes(t)}
-                  disabled={!isChipEnabled("theme", t)}
-                  onPress={() => toggle("theme", t)}
-                />
-              ))
-            ) : (
-              <Text style={styles.emptyChips}>Aucun classificateur renseigné.</Text>
-            )}
-          </View>
-        </Accordion>
-
-        <Accordion title="2 — Notions" onClear={() => clear("notion")}>
-          <View style={styles.chips}>
-            {allNotions.length ? (
-              allNotions.map((n) => (
-                <Chip
-                  key={n}
-                  label={n}
-                  colorName={colorForLabel(n, "notion")}
-                  selected={selectedNotions.includes(n)}
-                  disabled={!isChipEnabled("notion", n)}
-                  onPress={() => toggle("notion", n)}
-                />
-              ))
-            ) : (
-              <Text style={styles.emptyChips}>Aucun classificateur renseigné.</Text>
-            )}
-          </View>
-        </Accordion>
-
-        <Accordion title="3 — Importance" onClear={() => clear("importance")}>
-          <View style={styles.chips}>
-            {(presentImportanceLevels.length
-              ? presentImportanceLevels
-              : [1, 2, 3, 4]
-            ).map((lvl) => (
-              <Chip
-                key={lvl}
-                label={starsLabel(lvl)}
-                colorName="default"
-                selected={selectedImportance.includes(lvl)}
-                disabled={!isChipEnabled("importance", lvl)}
-                onPress={() => toggle("importance", lvl)}
-              />
-            ))}
-          </View>
-        </Accordion>
-
         <View style={styles.footer}>
           <View style={styles.countBlock}>
             <Text style={styles.count}>
@@ -189,7 +145,7 @@ export default function FlipcardsGrandsArretsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.flipcardsArrets]} />
+      <PageHeader trail={[...TRAIL.flipcardsArrets]} />
       {cardsState.status === "loading" ? <LoadingScreen /> : null}
       {cardsState.status === "error" ? (
         <ErrorScreen message={cardsState.message} onRetry={cardsState.reload} />
@@ -197,10 +153,6 @@ export default function FlipcardsGrandsArretsScreen() {
       {cardsState.status === "ready" ? (
         <FlipcardsContent
           allCards={cardsState.data.allCards}
-          allThemes={cardsState.data.allThemes}
-          allNotions={cardsState.data.allNotions}
-          presentImportanceLevels={cardsState.data.presentImportanceLevels}
-          colorForLabel={cardsState.data.colorForLabel}
           source={cardsState.source}
         />
       ) : null}
@@ -243,8 +195,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 16,
   },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
-  emptyChips: { color: colors.muted, fontSize: 14 },
   footer: {
     gap: 14,
     marginTop: 8,

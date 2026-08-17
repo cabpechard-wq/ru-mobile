@@ -17,7 +17,10 @@ export type Decision = {
   perspective?: string;
   /** Considérant de principe — absent du JSON Chronologie historique ; hydraté à l'app. */
   considerant?: string;
-  slugFiche?: string | null;
+  /** Cote / référence (filtre unifié Grandes décisions, site PR #12). */
+  reference?: string;
+  /** Slug de fiche d’arrêt (lien Chronologie / filtres Référence). */
+  slugFiche?: string;
   urlOfficielle?: string | null;
   liees?: string[];
   complete?: boolean;

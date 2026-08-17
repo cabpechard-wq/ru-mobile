@@ -1,4 +1,5 @@
 import { cardImportanceLevel, IMPORTANCE_LEVELS, type Card } from "./cards";
+import { sortFr } from "./sortFr";
 
 export type RelierItem = {
   id: string;
@@ -45,15 +46,11 @@ export function normalizeRelierData(raw: RelierData): NormalizedRelierData {
   const allThemes =
     raw.classifiers?.themes?.length
       ? raw.classifiers.themes
-      : [...new Set(allItems.flatMap((c) => c.themes || []))].sort((a, b) =>
-          a.localeCompare(b, "fr", { sensitivity: "base" })
-        );
+      : [...new Set(allItems.flatMap((c) => c.themes || []))].sort(sortFr);
   const allNotions =
     raw.classifiers?.notions?.length
       ? raw.classifiers.notions
-      : [...new Set(allItems.flatMap((c) => c.notions || []))].sort((a, b) =>
-          a.localeCompare(b, "fr", { sensitivity: "base" })
-        );
+      : [...new Set(allItems.flatMap((c) => c.notions || []))].sort(sortFr);
   const presentImportanceLevels = IMPORTANCE_LEVELS.filter((lvl) =>
     allItems.some((c) => (c.importance_level || 0) === lvl)
   );

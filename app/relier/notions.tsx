@@ -24,7 +24,7 @@ import { useManuelData } from "../../src/data/ManuelProvider";
 import { useRelierDicoData } from "../../src/data/RelierDicoProvider";
 import { filterRelierItems, pickBatch, type RelierItem } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function RelierNotionsSetupScreen() {
@@ -88,7 +88,7 @@ export default function RelierNotionsSetupScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.relationsNotions]} />
+      <PageHeader trail={[...TRAIL.relationsNotions]} />
       {relierState.status === "loading" ? <LoadingScreen /> : null}
       {relierState.status === "error" ? (
         <ErrorScreen message={relierState.message} onRetry={relierState.reload} />

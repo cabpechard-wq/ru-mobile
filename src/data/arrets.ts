@@ -1,20 +1,28 @@
+import { cardImportanceLevel, type Card } from "./cards";
+import { uniqueSortedFr } from "./sortFr";
 import { type Decision } from "./decisions";
 
 export type ArretsFilters = {
   query: string;
+  reference: string;
   theme: string | null;
+  notion: string | null;
   juridiction: string | null;
   formation: string | null;
-  year: string | null;
+  yearFrom: string;
+  yearTo: string;
   importance: number | null;
 };
 
 export const EMPTY_ARRETS_FILTERS: ArretsFilters = {
   query: "",
+  reference: "",
   theme: null,
+  notion: null,
   juridiction: null,
   formation: null,
-  year: null,
+  yearFrom: "",
+  yearTo: "",
   importance: null,
 };
 
@@ -22,17 +30,83 @@ export const EMPTY_ARRETS_FILTERS: ArretsFilters = {
 export function hasActiveArretsFilters(filters: ArretsFilters): boolean {
   return (
     filters.query.trim().length > 0 ||
+    filters.reference.trim().length > 0 ||
     filters.theme != null ||
+    filters.notion != null ||
     filters.juridiction != null ||
     filters.formation != null ||
-    filters.year != null ||
+    filters.yearFrom.trim().length > 0 ||
+    filters.yearTo.trim().length > 0 ||
     filters.importance != null
   );
 }
 
 export function uniqueSorted(values: (string | undefined | null)[]): string[] {
-  return [...new Set(values.map((v) => (v || "").trim()).filter(Boolean))].sort(
-    (a, b) => a.localeCompare(b, "fr")
+  return uniqueSortedFr(values);
+}
+
+export function yearFromIsoOrText(...bits: (string | number | undefined | null)[]): number {
+  for (const b of bits) {
+    const m = String(b ?? "").match(/(?:^|\D)(\d{4})(?:\D|$)/);
+    if (m) return Number(m[1]);
+  }
+  return 0;
+}
+
+/** Carte Flipcards / Relier → Decision pour le bandeau de filtres unifié (site PR #12). */
+export function decisionFromCard(card: Card, extra?: Decision): Decision {
+  return {
+    id: card.id,
+    nom: extra?.nom || card.recto,
+    date: extra?.date || card.date || "",
+    annee: extra?.annee || yearFromIsoOrText(card.date, card.recto),
+    juridiction: extra?.juridiction || card.juridiction,
+    formation: extra?.formation || card.formation,
+    importance: extra?.importance ?? cardImportanceLevel(card),
+    theme: extra?.theme || card.theme || (card.themes || [])[0],
+    notions: extra?.notions?.length ? extra.notions : card.notions,
+    objet: extra?.objet || card.objet,
+    reference: extra?.reference || card.reference,
+    slugFiche: extra?.slugFiche || card.id,
+  };
+}
+
+export function decisionFromRelierLike(
+  item: {
+    id: string;
+    recto: string;
+    objet?: string;
+    themes?: string[];
+    notions?: string[];
+    importance_level?: number;
+  },
+  extra?: Decision
+): Decision {
+  return {
+    id: item.id,
+    nom: extra?.nom || item.recto,
+    date: extra?.date || "",
+    annee: extra?.annee || yearFromIsoOrText(item.recto),
+    juridiction: extra?.juridiction,
+    formation: extra?.formation,
+    importance: extra?.importance ?? item.importance_level,
+    theme: extra?.theme || (item.themes || [])[0],
+    notions: extra?.notions?.length ? extra.notions : item.notions,
+    objet: extra?.objet || item.objet,
+    reference: extra?.reference,
+    slugFiche: extra?.slugFiche || item.id,
+  };
+}
+
+export function matchDecision(
+  haystack: Decision[],
+  keys: { id?: string; nom?: string }
+): Decision | undefined {
+  const id = (keys.id || "").trim();
+  const nom = (keys.nom || "").trim();
+  return (
+    haystack.find((d) => id && (d.id === id || d.slugFiche === id)) ||
+    haystack.find((d) => nom && d.nom === nom)
   );
 }
 
@@ -60,9 +134,23 @@ export function filterDecisions(
     if (filters.formation && (d.formation || "") !== filters.formation) {
       return false;
     }
-    if (filters.year && String(d.annee) !== filters.year) return false;
+    if (filters.notion && !(d.notions || []).includes(filters.notion)) {
+      return false;
+    }
+    const from = filters.yearFrom.trim() ? Number(filters.yearFrom) : null;
+    const to = filters.yearTo.trim() ? Number(filters.yearTo) : null;
+    if (from != null && !Number.isNaN(from) && (d.annee || 0) < from) return false;
+    if (to != null && !Number.isNaN(to) && (d.annee || 0) > to) return false;
     if (filters.importance != null && (d.importance || 0) !== filters.importance) {
       return false;
+    }
+    const ref = filters.reference.trim().toLowerCase();
+    if (ref) {
+      const hay = [d.reference, d.nom, d.slugFiche, d.id]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(ref)) return false;
     }
     if (q) {
       const hay = [

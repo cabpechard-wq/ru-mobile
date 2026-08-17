@@ -10,7 +10,7 @@ import {
   chapterIdFromManuelPath,
   splitCoursLinks,
 } from "../../src/data/dictionnaire";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function DictionnaireEntryScreen() {
@@ -35,7 +35,7 @@ export default function DictionnaireEntryScreen() {
   if (state.status !== "ready" || !entry) {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[SECTION.dictionnaire]} />
+        <PageHeader trail={[...TRAIL.dictionnaire]} />
         <Text style={styles.empty}>
           {state.status === "loading" ? "Chargement…" : "Terme introuvable."}
         </Text>
@@ -47,7 +47,7 @@ export default function DictionnaireEntryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.dictionnaire, entry.term]} />
+      <PageHeader trail={[...TRAIL.dictionnaire, entry.term]} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.term}>{entry.term}</Text>
         <Text style={styles.def}>{entry.definition}</Text>

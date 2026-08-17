@@ -21,7 +21,7 @@ import { neighborsForChapter } from "../data/manuelNav";
 import { useRelierDicoData } from "../data/RelierDicoProvider";
 import { useRelierData } from "../data/RelierProvider";
 import { useRelierSession } from "../data/RelierSessionContext";
-import { SECTION } from "../data/sections";
+import { TRAIL } from "../data/sections";
 import { useStudySession } from "../data/StudyContext";
 import { colors } from "../theme/colors";
 import { ErrorScreen, LoadingScreen } from "./DataStatus";
@@ -232,7 +232,7 @@ export function ManuelChapterView({
   if (!chapter) {
     return (
       <View style={styles.wrap}>
-        <PageHeader trail={[SECTION.manuel]} />
+        <PageHeader trail={[...TRAIL.manuel]} />
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.empty}>Chapitre introuvable.</Text>
         </ScrollView>
@@ -269,9 +269,8 @@ export function ManuelChapterView({
   };
 
   const crumbTrail = [
-    SECTION.manuel,
-    ...trail.slice(0, -1).map((c) => c.title),
-    chapter.title,
+    ...TRAIL.manuel,
+    ...trail.slice(1).map((c) => c.title),
   ];
 
   return (

@@ -18,7 +18,9 @@ export type DecadeGroup = {
 
 export type ChronoFilters = {
   query: string;
+  reference: string;
   juridiction: string | null;
+  formation: string | null;
   theme: string | null;
   notion: string | null;
   importance: number | null;
@@ -29,7 +31,9 @@ export type ChronoFilters = {
 
 export const EMPTY_CHRONO_FILTERS: ChronoFilters = {
   query: "",
+  reference: "",
   juridiction: null,
+  formation: null,
   theme: null,
   notion: null,
   importance: null,
@@ -67,7 +71,7 @@ export function searchDecisions(decisions: Decision[], query: string): Decision[
   const q = query.trim().toLowerCase();
   if (!q) return decisions;
   return decisions.filter((d) => {
-    const haystack = [d.nom, d.theme, d.objet, ...(d.notions || [])]
+    const haystack = [d.nom, d.theme, d.objet, d.reference, ...(d.notions || [])]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -88,6 +92,9 @@ export function filterChronologie(
     if (filters.juridiction && (d.juridiction || "") !== filters.juridiction) {
       return false;
     }
+    if (filters.formation && (d.formation || "") !== filters.formation) {
+      return false;
+    }
     if (filters.theme) {
       const tl = themeLabel(d.theme);
       if (tl !== filters.theme && d.theme !== filters.theme) return false;
@@ -104,6 +111,14 @@ export function filterChronologie(
     if (from != null && !Number.isNaN(from) && (d.annee || 0) < from) return false;
     if (to != null && !Number.isNaN(to) && (d.annee || 0) > to) return false;
     if (filters.relatedOnly && relationCount(byId, d.id) === 0) return false;
+    const ref = filters.reference.trim().toLowerCase();
+    if (ref) {
+      const hay = [d.reference, d.nom, d.slugFiche, d.id]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(ref)) return false;
+    }
     return true;
   });
   return list;

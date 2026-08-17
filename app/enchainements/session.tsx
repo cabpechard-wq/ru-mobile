@@ -12,7 +12,7 @@ import {
   type Decision,
 } from "../../src/data/enchainements";
 import { useEnchainementsSession } from "../../src/data/EnchainementsSessionContext";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function EnchainementsSessionScreen() {
@@ -57,7 +57,7 @@ export default function EnchainementsSessionScreen() {
   if (!initial.length) {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[SECTION.enchainements, "Exercice"]} />
+        <PageHeader trail={[...TRAIL.enchainements, "Exercice"]} />
         <Text style={styles.empty}>Aucun enchaînement en cours.</Text>
       </SafeAreaView>
     );
@@ -67,7 +67,7 @@ export default function EnchainementsSessionScreen() {
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
         <PageHeader
-          trail={[SECTION.enchainements, "Exercice"]}
+          trail={[...TRAIL.enchainements, "Exercice"]}
           right={
             <Text style={styles.summary} numberOfLines={1}>
               Ordre chronologique ?
