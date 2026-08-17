@@ -171,25 +171,19 @@ Chronologie (`app/chronologie/[id].tsx`) n’a pas de champ Considérant
 du tout. Si le téléphone tourne un build Play, c’est bien le scénario
 ci-dessus.
 
-### 4.4 Pistes de correction (pour un second temps)
+### 4.4 Correctif (17 août, second temps)
 
-Par ordre de robustesse :
+L’app hydrate `Decision.considerant` **au chargement** de la Chronologie,
+depuis `assets/considerants.json` (843 slugs extraits des blockquotes HTML)
+éventuellement fusionné avec `/chronologie/data/considerants.json` si le
+site le publie, puis le pack Flipcards.
 
-1. **Faire porter `considerant` par le JSON Chronologie** (générateur
-   privé + `chronology-decisions.json`). Un seul fonds, hors-ligne dès
-   que la Chronologie est chargée. C’est la vraie source unique.
-2. À défaut, **joindre le Considérant au chargement** des 993 décisions
-   (index `slug → texte`, ou fusion Flipcards + parse HTML **une fois**,
-   pas à chaque ouverture de fiche) et le garder dans le state.
-3. Cache HTTP / AsyncStorage du fonds : aujourd’hui, tuer l’app en
-   avion perd aussi Objet/Faits — seul le Considérant « se voit »
-   parce qu’il est le seul champ re-fetché au tap.
+Ouvrir une fiche en mode avion n’effectue plus de `fetch` HTML : le texte
+est déjà sur la décision en mémoire, comme Objet / Portée.
 
-Ne pas se contenter d’un fallback HTML : c’est exactement le trou
-hors-ligne.
-
-Couverture HTML : **150 fiches sans `<blockquote>`**. Même en ligne,
-celles-là n’auront un Considérant que si le pack Flipcards l’a.
+Les 150 fiches sans `<blockquote>` n’ont toujours pas de Considérant
+(ni sur le site). Le générateur privé devrait à terme écrire le champ
+dans `chronology-decisions.json` pour supprimer l’index parallèle.
 
 ## 5. Liens d’exercices filtrés par chapitre
 

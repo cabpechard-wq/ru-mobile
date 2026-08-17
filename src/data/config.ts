@@ -21,6 +21,12 @@ export const MEMBER_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/enchainements-log
  */
 export const DEMO_CHRONOLOGIE_ENDPOINT = DEMO_ENCHAINEMENTS_ENDPOINT;
 export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-decisions.json`;
+/**
+ * Index slug → Considérant, extrait des fiches HTML. Best-effort : l'app
+ * embarque le même fichier (`assets/considerants.json`) si le réseau échoue
+ * ou si le générateur privé n'a pas encore publié l'URL.
+ */
+export const CONSIDERANTS_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/considerants.json`;
 
 /**
  * Dictionnaire : contenu public sur le site (pas de pack Worker, pas

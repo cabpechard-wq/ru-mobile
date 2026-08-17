@@ -1,6 +1,13 @@
-import { SITE_BASE_URL } from "./config";
+import bundledConsiderants from "../../assets/considerants.json";
 import type { Card } from "./cards";
+import { CONSIDERANTS_ENDPOINT, SITE_BASE_URL } from "./config";
 import type { Decision } from "./decisions";
+
+export type ConsiderantFile = {
+  kind?: string;
+  count?: number;
+  bySlug?: Record<string, string>;
+};
 
 /** Normalise un libellé pour comparer recto Flipcards ↔ nom Chronologie. */
 function normLabel(s: string): string {
@@ -33,9 +40,70 @@ export function considerantFromCards(
   return text || undefined;
 }
 
+export function bundledConsiderantIndex(): Record<string, string> {
+  return (bundledConsiderants as ConsiderantFile).bySlug || {};
+}
+
+export function lookupConsiderant(
+  decision: Decision,
+  bySlug: Record<string, string>,
+): string | undefined {
+  const keys = [decision.slugFiche, decision.id].filter(Boolean) as string[];
+  for (const key of keys) {
+    const text = (bySlug[key] || "").trim();
+    if (text) return text;
+  }
+  return undefined;
+}
+
+/**
+ * Pose `considerant` sur chaque décision à partir de l'index HTML, du pack
+ * Flipcards, puis d'un cache de session (fetch HTML réussi).
+ * N'écrase pas un texte déjà présent (JSON Chronologie futur, ou déjà hydraté).
+ */
+export function applyConsiderantsToDecisions(
+  decisions: Decision[],
+  bySlug: Record<string, string>,
+  cards?: Card[],
+  remembered?: Record<string, string>,
+): Decision[] {
+  return decisions.map((d) => {
+    const existing = (d.considerant || "").trim();
+    if (existing) return d;
+    const rememberedText = remembered
+      ? [d.id, d.slugFiche || ""]
+          .map((k) => (remembered[k] || "").trim())
+          .find(Boolean)
+      : undefined;
+    const text =
+      rememberedText ||
+      lookupConsiderant(d, bySlug) ||
+      (cards ? considerantFromCards(d, cards) : undefined);
+    if (!text) return d;
+    return { ...d, considerant: text };
+  });
+}
+
+/** Index distant si disponible, sinon (ou en plus) l'index embarqué. */
+export async function loadConsiderantIndex(): Promise<Record<string, string>> {
+  const fallback = bundledConsiderantIndex();
+  try {
+    const res = await fetch(CONSIDERANTS_ENDPOINT);
+    if (!res.ok) return fallback;
+    const json = (await res.json()) as ConsiderantFile;
+    const remote = json?.bySlug;
+    if (remote && typeof remote === "object" && Object.keys(remote).length) {
+      return { ...fallback, ...remote };
+    }
+  } catch {
+    // Hors-ligne / 404 : l'index embarqué suffit pour le mode avion.
+  }
+  return fallback;
+}
+
 /**
  * Fallback : extrait le blockquote « Considérant » de la fiche HTML publique.
- * Couvre les ~995 fiches même hors jeu Flipcards.
+ * Couvre les fiches hors index (ou index pas encore publié) une fois en ligne.
  */
 export async function fetchConsiderantFromSite(
   slug: string,

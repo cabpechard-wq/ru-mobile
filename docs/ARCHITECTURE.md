@@ -81,17 +81,22 @@ ressources-universitaires (générateur)
         │
         ├─► ru-public/chronologie/data/chronology-decisions.json
         │     Objet, Portée, Faits, Enjeu, Solution, Perspective
-        │     PAS de considerant
+        │     (pas de considerant dans le générateur actuel)
+        │
+        ├─► ru-public/chronologie/data/considerants.json  (slug → texte)
+        │     + copie embarquée ru-mobile/assets/considerants.json
+        │     hydraté sur Decision.considerant au chargement de la Chronologie
         │
         └─► Flipcards cards.json (démo publique / pack membre Worker)
               Objet, Portée, considerant, + recto/verso
               sous-ensemble pédagogique, pas les 993 fiches
 ```
 
-Conséquence : ouvrir une fiche dans l’app affiche le corps depuis la
-Chronologie (déjà en mémoire) et **rattrape le Considérant** soit dans
-le pack Flipcards, soit par un `fetch` HTML de
-`/arrets/<slug>/`. Détail et bug hors-ligne : [`DIAGNOSTIC.md`](./DIAGNOSTIC.md).
+Conséquence : le Considérant est collé sur les décisions **en même temps**
+que le fonds Chronologie (index embarqué si le réseau échoue). Un `fetch`
+HTML `/arrets/<slug>/` ne sert plus que de rattrapage en ligne pour les
+fiches hors index. Détail historique du bug hors-ligne :
+[`DIAGNOSTIC.md`](./DIAGNOSTIC.md).
 
 ## Liens « exercices de ce cours »
 
