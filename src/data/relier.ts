@@ -42,8 +42,18 @@ export function normalizeRelierData(raw: RelierData): NormalizedRelierData {
       slug: c.slug || undefined,
     }));
 
-  const allThemes = raw.classifiers?.themes || [];
-  const allNotions = raw.classifiers?.notions || [];
+  const allThemes =
+    raw.classifiers?.themes?.length
+      ? raw.classifiers.themes
+      : [...new Set(allItems.flatMap((c) => c.themes || []))].sort((a, b) =>
+          a.localeCompare(b, "fr", { sensitivity: "base" })
+        );
+  const allNotions =
+    raw.classifiers?.notions?.length
+      ? raw.classifiers.notions
+      : [...new Set(allItems.flatMap((c) => c.notions || []))].sort((a, b) =>
+          a.localeCompare(b, "fr", { sensitivity: "base" })
+        );
   const presentImportanceLevels = IMPORTANCE_LEVELS.filter((lvl) =>
     allItems.some((c) => (c.importance_level || 0) === lvl)
   );

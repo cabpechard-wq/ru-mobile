@@ -1,19 +1,12 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { createContext, useContext, useMemo } from "react";
 import demoJson from "../../assets/demo/relier-dico-cards.json";
 import { MEMBER_RELIER_DICO_ENDPOINT } from "./config";
-import { useAuth } from "./AuthContext";
 import {
   type NormalizedRelierData,
   type RelierData,
   normalizeRelierData,
 } from "./relier";
+import { useAuthAwareJson } from "./useAuthAwareJson";
 
 type RelierDicoState =
   | { status: "loading" }
@@ -25,67 +18,30 @@ type RelierDicoContextValue = RelierDicoState & { reload: () => void };
 const RelierDicoContext = createContext<RelierDicoContextValue | null>(null);
 
 /**
- * Démo : JSON extrait du HTML du site (pas encore de cards.json sur
- * ru-public). Membre : Worker relier-dico.
+ * Anonyme : JSON embarqué. Connecté : Worker relier-dico (JSON ou HTML).
  */
 export function RelierDicoProvider({ children }: { children: React.ReactNode }) {
-  const auth = useAuth();
-  const [state, setState] = useState<RelierDicoState>({ status: "loading" });
-
-  const load = useCallback(() => {
-    if (auth.status === "checking") return;
-    setState({ status: "loading" });
-
-    if (auth.status !== "authenticated") {
-      setState({
-        status: "ready",
-        data: normalizeRelierData(demoJson as RelierData),
-        source: "demo",
-      });
-      return;
-    }
-
-    fetch(MEMBER_RELIER_DICO_ENDPOINT, {
-      headers: { Authorization: `Bearer ${auth.token}` },
-    })
-      .then(async (res) => {
-        if (res.status === 401) {
-          await auth.logout();
-          return;
-        }
-        const text = await res.text();
-        const trimmed = (text || "").trim();
-        if (!res.ok) {
-          throw new Error(`Serveur indisponible (${res.status})`);
-        }
-        if (trimmed.startsWith("<")) {
-          throw new Error("Réponse HTML inattendue.");
-        }
-        const json = JSON.parse(trimmed) as RelierData;
-        setState({
-          status: "ready",
-          data: normalizeRelierData(json),
-          source: "member",
-        });
-      })
-      .catch(() => {
-        setState({
-          status: "ready",
-          data: normalizeRelierData(demoJson as RelierData),
-          source: "demo",
-        });
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.status]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const value = useMemo<RelierDicoContextValue>(
-    () => ({ ...state, reload: load }),
-    [state, load]
+  const remote = useAuthAwareJson<RelierData>(
+    "",
+    MEMBER_RELIER_DICO_ENDPOINT,
+    true,
+    demoJson as RelierData,
   );
+
+  const value = useMemo<RelierDicoContextValue>(() => {
+    if (remote.status === "ready") {
+      return {
+        status: "ready",
+        data: normalizeRelierData(remote.json),
+        source: remote.source,
+        reload: remote.reload,
+      };
+    }
+    if (remote.status === "loading") {
+      return { status: "loading", reload: remote.reload };
+    }
+    return { status: "error", message: remote.message, reload: remote.reload };
+  }, [remote]);
 
   return (
     <RelierDicoContext.Provider value={value}>{children}</RelierDicoContext.Provider>
