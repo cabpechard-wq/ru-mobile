@@ -106,8 +106,18 @@ export function normalizeCardsData(raw: FlipcardsData): NormalizedCardsData {
   const allCards: Card[] = (raw.cards || [])
     .filter((c) => !!c.recto)
     .map(normalizeCard);
-  const allThemes = raw.classifiers?.themes || [];
-  const allNotions = raw.classifiers?.notions || [];
+  const allThemes =
+    raw.classifiers?.themes?.length
+      ? raw.classifiers.themes
+      : [...new Set(allCards.flatMap((c) => c.themes || []))].sort((a, b) =>
+          a.localeCompare(b, "fr", { sensitivity: "base" })
+        );
+  const allNotions =
+    raw.classifiers?.notions?.length
+      ? raw.classifiers.notions
+      : [...new Set(allCards.flatMap((c) => c.notions || []))].sort((a, b) =>
+          a.localeCompare(b, "fr", { sensitivity: "base" })
+        );
   const presentImportanceLevels = IMPORTANCE_LEVELS.filter((lvl) =>
     allCards.some((c) => cardImportanceLevel(c) === lvl)
   );

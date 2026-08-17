@@ -1,14 +1,25 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { parseWorkerPayload } from "./memberPack";
 
 export type RemoteJsonState<T> =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; json: T; source: "demo" | "member" };
 
+function memberUrls(url: string): string[] {
+  const out = [url];
+  if (url.includes("?format=json")) {
+    out.push(url.replace(/\?format=json$/, ""));
+  }
+  return out;
+}
+
 async function fetchJson<T>(url: string, token?: string): Promise<T> {
   const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: token
+      ? { Authorization: `Bearer ${token}`, Accept: "application/json" }
+      : { Accept: "application/json" },
   });
   if (res.status === 401) {
     const err = new Error("Session expirée.");
@@ -19,7 +30,6 @@ async function fetchJson<T>(url: string, token?: string): Promise<T> {
   const trimmed = (text || "").trim();
 
   if (!res.ok) {
-    // Parfois un reverse-proxy renvoie une page HTML d'erreur.
     if (trimmed.startsWith("<")) {
       throw new Error(`Serveur indisponible (${res.status}, page HTML).`);
     }
@@ -32,28 +42,49 @@ async function fetchJson<T>(url: string, token?: string): Promise<T> {
     }
   }
 
-  if (!trimmed) throw new Error("Réponse vide du serveur.");
-  if (trimmed.startsWith("<")) {
-    throw new Error(
-      "Réponse HTML au lieu de JSON (réseau / pare-feu / session).",
-    );
+  const parsed = parseWorkerPayload(trimmed) as T & { error?: string };
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    "error" in parsed &&
+    !(parsed as { cards?: unknown }).cards &&
+    !(parsed as { decisions?: unknown }).decisions
+  ) {
+    throw new Error(parsed.error || "Pack indisponible.");
   }
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch {
-    throw new Error("Réponse JSON invalide.");
+  return parsed as T;
+}
+
+async function fetchFirstOk<T>(urls: string[], token?: string): Promise<T> {
+  let last: unknown;
+  const seen = new Set<string>();
+  for (const url of urls) {
+    if (seen.has(url)) continue;
+    seen.add(url);
+    try {
+      return await fetchJson<T>(url, token);
+    } catch (err) {
+      last = err;
+      if (
+        err instanceof Error &&
+        (err as Error & { code?: string }).code === "unauthorized"
+      ) {
+        throw err;
+      }
+    }
   }
+  throw last instanceof Error ? last : new Error("Pack indisponible.");
 }
 
 /**
  * Fetch JSON générique, membre si connecté sinon démo publique.
  * Retombe sur la démo si la session a expiré (401).
  *
- * `requiresAuthHeader` : false pour un JSON statique public (pas de
- * vérification serveur, pas besoin de Bearer — évite un preflight CORS
- * inutile). true (défaut) pour un endpoint Worker qui vérifie la session.
+ * Connecté : le Worker sert souvent du HTML (`const DATA`), pas du JSON.
+ * On l'accepte. On ne retombe PAS sur le jeu de 8 fiches démo.
  *
- * `fallback` : JSON embarqué utilisé le réseau échoue (mode démo fiable).
+ * `requiresAuthHeader` : false pour un JSON statique public (pas de Bearer).
+ * `fallback` : JSON embarqué, uniquement hors connexion.
  */
 export function useAuthAwareJson<T>(
   demoUrl: string,
@@ -69,10 +100,16 @@ export function useAuthAwareJson<T>(
     setState({ status: "loading" });
 
     const isMember = auth.status === "authenticated";
+    if (!isMember && fallback != null && !demoUrl) {
+      setState({ status: "ready", json: fallback, source: "demo" });
+      return;
+    }
+
     const url = isMember ? memberUrl : demoUrl;
     const token = isMember && requiresAuthHeader ? auth.token : undefined;
+    const urls = isMember ? memberUrls(url) : [url];
 
-    fetchJson<T>(url, token)
+    fetchFirstOk<T>(urls, token)
       .then((json) =>
         setState({
           status: "ready",
@@ -89,8 +126,7 @@ export function useAuthAwareJson<T>(
           auth.logout();
           return;
         }
-        // Réseau / HTML / parse : bascule sur le JSON embarqué si dispo.
-        if (fallback != null) {
+        if (!isMember && fallback != null) {
           setState({ status: "ready", json: fallback, source: "demo" });
           return;
         }

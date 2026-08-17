@@ -49,7 +49,7 @@ export const MANUEL_EXERCISES_ENDPOINT = `${SITE_BASE_URL}/manuel/exercices.json
 
 /**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
- * mobile (`?format=json`), même session/entitlement que le web.
+ * mobile (`?format=json` si le Worker le gère ; sinon HTML `const DATA`).
  */
 export const AUTH_API_BASE_URL = "https://flipcards-auth.cab-pechard.workers.dev";
 export const MEMBER_CARDS_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/flipcards?format=json`;
