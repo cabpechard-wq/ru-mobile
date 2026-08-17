@@ -106,6 +106,7 @@ export default function ArretFicheScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useChronologieData();
   const cards = useCardsData();
+  const rememberConsiderant = state.rememberConsiderant;
 
   const byId = useMemo(
     () =>
@@ -120,17 +121,19 @@ export default function ArretFicheScreen() {
     return findDecision(state.decisions, id);
   }, [state, id]);
 
+  const fromDecision = (decision?.considerant || "").trim() || undefined;
+
   const fromCards = useMemo(() => {
-    if (!decision || cards.status !== "ready") return undefined;
+    if (fromDecision || !decision || cards.status !== "ready") return undefined;
     return considerantFromCards(decision, cards.data.allCards);
-  }, [decision, cards]);
+  }, [decision, cards, fromDecision]);
 
   const [fromSite, setFromSite] = useState<string | undefined>();
   const [siteLoading, setSiteLoading] = useState(false);
 
   useEffect(() => {
     setFromSite(undefined);
-    if (!decision || fromCards) {
+    if (!decision || fromDecision || fromCards) {
       setSiteLoading(false);
       return;
     }
@@ -145,16 +148,20 @@ export default function ArretFicheScreen() {
       if (cancelled) return;
       setFromSite(text);
       setSiteLoading(false);
+      if (text) {
+        rememberConsiderant(decision.id, text);
+        if (decision.slugFiche) rememberConsiderant(decision.slugFiche, text);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [decision, fromCards]);
+  }, [decision, fromCards, fromDecision, rememberConsiderant]);
 
-  const considerant = fromCards || fromSite;
+  const considerant = fromDecision || fromCards || fromSite;
   const considerantLoading =
     !considerant &&
-    (siteLoading || (cards.status === "loading" && !fromSite));
+    (siteLoading || (cards.status === "loading" && !fromDecision));
 
   const related = useMemo(
     () => (decision ? directRelations(byId, decision.id) : []),

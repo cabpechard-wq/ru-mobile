@@ -15,6 +15,8 @@ export type Decision = {
   enjeu?: string;
   solution?: string;
   perspective?: string;
+  /** Considérant de principe — absent du JSON Chronologie historique ; hydraté à l'app. */
+  considerant?: string;
   slugFiche?: string | null;
   urlOfficielle?: string | null;
   liees?: string[];

@@ -9,13 +9,16 @@ import {
 } from "react-native";
 import { useCardsData } from "../data/CardsProvider";
 import { useChronologieData } from "../data/ChronologieProvider";
+import { nameInSet, nameKeySet } from "../data/coursThemes";
 import { useDictionnaireData } from "../data/DictionnaireProvider";
 import { useEnchainementsData } from "../data/EnchainementsProvider";
 import { useEnchainementsSession } from "../data/EnchainementsSessionContext";
 import { pickRandomChain, shuffledOrder } from "../data/enchainements";
+import { useFlipcardsDicoData } from "../data/FlipcardsDicoProvider";
 import { useManuelData } from "../data/ManuelProvider";
 import { breadcrumb, refForChapterId } from "../data/manuel";
 import { neighborsForChapter } from "../data/manuelNav";
+import { useRelierDicoData } from "../data/RelierDicoProvider";
 import { useRelierData } from "../data/RelierProvider";
 import { useRelierSession } from "../data/RelierSessionContext";
 import { SECTION } from "../data/sections";
@@ -38,8 +41,10 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
   const router = useRouter();
   const manuel = useManuelData();
   const cardsState = useCardsData();
+  const flipDico = useFlipcardsDicoData();
   const { setSession } = useStudySession();
   const relierState = useRelierData();
+  const relierDico = useRelierDicoData();
   const { setSession: setRelierSession } = useRelierSession();
   const enchainementsState = useEnchainementsData();
   const { setSession: setEnchainementsSession } = useEnchainementsSession();
@@ -47,7 +52,22 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
   const exercises =
     manuel.status === "ready" ? manuel.exercises[chapterRef] : undefined;
   const jurisprudence = exercises?.jurisprudence ?? [];
-  if (!jurisprudence.length) return null;
+  const notions = exercises?.notions ?? [];
+  if (!jurisprudence.length && !notions.length) return null;
+
+  const notionKeys = nameKeySet(notions);
+  const notionCards =
+    flipDico.status === "ready"
+      ? flipDico.data.allCards.filter(
+          (c) => nameInSet(c.recto, notionKeys) || nameInSet(c.id, notionKeys)
+        )
+      : [];
+  const notionRelier =
+    relierDico.status === "ready"
+      ? relierDico.data.allItems.filter(
+          (i) => nameInSet(i.recto, notionKeys) || nameInSet(i.id, notionKeys)
+        )
+      : [];
 
   const startFlipcards = () => {
     if (cardsState.status !== "ready") return;
@@ -85,43 +105,107 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
     router.push("/enchainements/session");
   };
 
+  const startFlipcardsNotions = () => {
+    const cards = shuffle(notionCards);
+    if (!cards.length) return;
+    setSession({
+      cards,
+      hint: `${title} · ${cards.length} carte(s)`,
+      selectedIds: cards.map((c) => c.id || c.recto),
+      pack: "notions",
+    });
+    router.push("/study");
+  };
+
+  const startRelierNotions = () => {
+    const items = shuffle(notionRelier);
+    if (items.length < 2) return;
+    setRelierSession({
+      items,
+      pack: "notions",
+      pool: items,
+      batchSize: items.length,
+    });
+    router.push("/relier/session");
+  };
+
   return (
     <View style={styles.exercises} accessibilityLabel="Exercices liés à ce chapitre">
-      <Text style={styles.exercisesTitle}>
-        Apprendre la jurisprudence de ce cours{" "}
-        <Text style={styles.exercisesCount}>({jurisprudence.length})</Text>
-      </Text>
-      <View style={styles.exercisesActions}>
-        <Pressable
-          style={styles.exerciseBtn}
-          disabled={cardsState.status !== "ready"}
-          onPress={startFlipcards}
-        >
-          <Text style={styles.exerciseBtnText}>Flipcards</Text>
-        </Pressable>
-        <Pressable
-          style={styles.exerciseBtn}
-          disabled={relierState.status !== "ready"}
-          onPress={startRelier}
-        >
-          <Text style={styles.exerciseBtnText}>Relier</Text>
-        </Pressable>
-        <Pressable
-          style={styles.exerciseBtn}
-          disabled={enchainementsState.status !== "ready"}
-          onPress={startEnchainements}
-        >
-          <Text style={styles.exerciseBtnText}>Enchaînements logiques</Text>
-        </Pressable>
-      </View>
+      {jurisprudence.length ? (
+        <>
+          <Text style={styles.exercisesTitle}>
+            Apprendre la jurisprudence de ce cours{" "}
+            <Text style={styles.exercisesCount}>({jurisprudence.length})</Text>
+          </Text>
+          <View style={styles.exercisesActions}>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={cardsState.status !== "ready"}
+              onPress={startFlipcards}
+            >
+              <Text style={styles.exerciseBtnText}>Flipcards</Text>
+            </Pressable>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={relierState.status !== "ready"}
+              onPress={startRelier}
+            >
+              <Text style={styles.exerciseBtnText}>Relier</Text>
+            </Pressable>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={enchainementsState.status !== "ready"}
+              onPress={startEnchainements}
+            >
+              <Text style={styles.exerciseBtnText}>Enchaînements logiques</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
 
-      <Text style={[styles.exercisesTitle, styles.notionsTitle]}>
-        Apprendre les notions de ce cours
-      </Text>
-      <View style={styles.exercisesActions}>
-        <Text style={styles.exerciseBtnTextDisabled}>Flipcards</Text>
-        <Text style={styles.exerciseBtnTextDisabled}>Relier</Text>
-      </View>
+      {notions.length ? (
+        <>
+          <Text
+            style={[
+              styles.exercisesTitle,
+              jurisprudence.length ? styles.notionsTitle : null,
+            ]}
+          >
+            Apprendre les notions de ce cours{" "}
+            <Text style={styles.exercisesCount}>({notions.length})</Text>
+          </Text>
+          <View style={styles.exercisesActions}>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={!notionCards.length}
+              onPress={startFlipcardsNotions}
+            >
+              <Text
+                style={[
+                  styles.exerciseBtnText,
+                  !notionCards.length && styles.exerciseBtnTextDisabled,
+                ]}
+              >
+                Flipcards
+              </Text>
+            </Pressable>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={notionRelier.length < 2}
+              onPress={startRelierNotions}
+            >
+              <Text
+                style={[
+                  styles.exerciseBtnText,
+                  notionRelier.length < 2 && styles.exerciseBtnTextDisabled,
+                ]}
+              >
+                Relier
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -358,9 +442,6 @@ const styles = StyleSheet.create({
   exerciseBtnText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
   exerciseBtnTextDisabled: {
     color: colors.muted,
-    fontWeight: "700",
-    fontSize: 13,
     opacity: 0.5,
-    paddingVertical: 10,
   },
 });
