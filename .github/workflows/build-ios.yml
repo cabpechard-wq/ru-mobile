@@ -1,12 +1,7 @@
-name: Build Android (EAS)
+name: Build iOS (EAS)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - claude/google-play-first-publish-qrs8mu
-    paths:
-      - .github/workflows/build-android.yml
 
 jobs:
   build:
@@ -15,7 +10,7 @@ jobs:
       - name: Require Play branch
         run: |
           if [ "${GITHUB_REF}" != "refs/heads/claude/google-play-first-publish-qrs8mu" ]; then
-            echo "Build Android production : choisir la branche claude/google-play-first-publish-qrs8mu (actuel : ${GITHUB_REF})."
+            echo "Build iOS production : choisir la branche claude/google-play-first-publish-qrs8mu (actuel : ${GITHUB_REF})."
             exit 1
           fi
 
@@ -36,5 +31,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Android app bundle
-        run: eas build --platform android --profile production --non-interactive --wait
+      - name: Build iOS app
+        run: eas build --platform ios --profile production --non-interactive --wait
