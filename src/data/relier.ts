@@ -1,6 +1,9 @@
 import { cardImportanceLevel, IMPORTANCE_LEVELS, type Card } from "./cards";
 import { sortFr } from "./sortFr";
 
+/** Plafond du plateau Relier — même constante que le site (`RELIER_BOARD_MAX`). */
+export const RELIER_BOARD_MAX = 20;
+
 export type RelierItem = {
   id: string;
   recto: string;
@@ -91,7 +94,8 @@ export function derangement<T>(arr: T[]): T[] {
 }
 
 export function pickBatch(items: RelierItem[], size: number): RelierItem[] {
-  return shuffle(items).slice(0, Math.min(size, items.length));
+  const n = Math.min(size, items.length, RELIER_BOARD_MAX);
+  return shuffle(items).slice(0, n);
 }
 
 /** Filtre Relier par thèmes / notions / importance (OR au sein d'un groupe). */

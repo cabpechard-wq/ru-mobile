@@ -2,7 +2,8 @@ import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Accordion } from "./Accordion";
 import { Chip } from "./Chip";
-import { themeLabel, uniqueSorted } from "../data/arrets";
+import { uniqueSorted } from "../data/arrets";
+import { uniqueThemeDisplayLabels } from "../data/coursThemes";
 import { starsLabel, type Decision } from "../data/decisions";
 import { colors } from "../theme/colors";
 
@@ -41,9 +42,7 @@ export function GrandesFiltresBar<T extends GrandesFiltersCore>({
     return {
       juridictions: uniqueSorted(decisions.map((d) => d.juridiction)),
       formations: uniqueSorted(scoped.map((d) => d.formation)),
-      themes: uniqueSorted(
-        decisions.map((d) => themeLabel(d.theme) || d.theme)
-      ),
+      themes: uniqueThemeDisplayLabels(decisions.map((d) => d.theme)),
       notions: uniqueSorted(decisions.flatMap((d) => d.notions || [])),
     };
   }, [decisions, filters.juridiction]);

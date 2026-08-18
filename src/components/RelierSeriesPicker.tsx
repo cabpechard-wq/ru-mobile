@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Chip } from "./Chip";
+import { RELIER_BOARD_MAX } from "../data/relier";
 import { colors } from "../theme/colors";
 
 export type RelierSeriesSize = "all" | 3 | 5 | 10;
@@ -19,8 +20,8 @@ export function resolveRelierBatchSize(
   poolLength: number
 ): number {
   if (poolLength < 2) return 0;
-  if (size === "all") return poolLength;
-  return Math.min(size, poolLength);
+  if (size === "all") return Math.min(poolLength, RELIER_BOARD_MAX);
+  return Math.min(size, poolLength, RELIER_BOARD_MAX);
 }
 
 export function RelierSeriesPicker({
@@ -60,7 +61,7 @@ export function RelierSeriesPicker({
       >
         <Text style={styles.btnText}>
           {selected === "all"
-            ? `Commencer · tout le lot (${poolLength})`
+            ? `Commencer · tout le lot (${n})`
             : `Commencer · série de ${n || selected}`}
         </Text>
       </Pressable>
