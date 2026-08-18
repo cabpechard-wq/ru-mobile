@@ -6,25 +6,21 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Accordion } from "../../src/components/Accordion";
-import { Chip } from "../../src/components/Chip";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { GrandesFiltresBar } from "../../src/components/GrandesFiltresBar";
 import { PageHeader } from "../../src/components/PageHeader";
 import {
   EMPTY_ARRETS_FILTERS,
   filterDecisions,
   hasActiveArretsFilters,
-  themeLabel,
-  uniqueSorted,
   type ArretsFilters,
 } from "../../src/data/arrets";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { displayNom, starsLabel, type Decision } from "../../src/data/decisions";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 function DecisionRow({
@@ -58,13 +54,6 @@ function DecisionRow({
   );
 }
 
-function toggleSingle(
-  current: string | null,
-  value: string
-): string | null {
-  return current === value ? null : value;
-}
-
 export default function ArretsListScreen() {
   const router = useRouter();
   const state = useChronologieData();
@@ -73,35 +62,6 @@ export default function ArretsListScreen() {
   const decisions = state.status === "ready" ? state.decisions : [];
   const filtersActive = hasActiveArretsFilters(filters);
 
-  const themes = useMemo(
-    () =>
-      uniqueSorted(decisions.map((d) => themeLabel(d.theme) || d.theme)).filter(
-        Boolean
-      ),
-    [decisions]
-  );
-  const juridictions = useMemo(
-    () => uniqueSorted(decisions.map((d) => d.juridiction)),
-    [decisions]
-  );
-  const formations = useMemo(
-    () => uniqueSorted(decisions.map((d) => d.formation)),
-    [decisions]
-  );
-  const years = useMemo(
-    () =>
-      uniqueSorted(decisions.map((d) => (d.annee ? String(d.annee) : ""))).sort(
-        (a, b) => Number(b) - Number(a)
-      ),
-    [decisions]
-  );
-  const importanceLevels = useMemo(() => {
-    const present = new Set(
-      decisions.map((d) => d.importance || 0).filter((n) => n >= 1 && n <= 4)
-    );
-    return [1, 2, 3, 4].filter((n) => present.has(n));
-  }, [decisions]);
-
   const filtered = useMemo(() => {
     if (!filtersActive) return [];
     return filterDecisions(decisions, filters);
@@ -109,7 +69,7 @@ export default function ArretsListScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.arrets]} />
+      <PageHeader trail={[...TRAIL.arrets]} />
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -140,111 +100,11 @@ export default function ArretsListScreen() {
             {state.source === "demo" ? " · démo" : ""}.
           </Text>
 
-          <TextInput
-            style={styles.search}
-            placeholder="Rechercher (nom, objet, thème…)"
-            placeholderTextColor={colors.muted}
-            value={filters.query}
-            onChangeText={(query) => setFilters((f) => ({ ...f, query }))}
-            autoCapitalize="none"
+          <GrandesFiltresBar
+            decisions={decisions}
+            filters={filters}
+            onChange={setFilters}
           />
-
-          <View style={styles.filtersCard}>
-            <Accordion title="Thème (1 seul)" onClear={() => setFilters((f) => ({ ...f, theme: null }))}>
-              <View style={styles.chips}>
-                {themes.map((t) => (
-                  <Chip
-                    key={t}
-                    label={t}
-                    selected={filters.theme === t}
-                    onPress={() =>
-                      setFilters((f) => ({ ...f, theme: toggleSingle(f.theme, t) }))
-                    }
-                  />
-                ))}
-              </View>
-            </Accordion>
-
-            <Accordion
-              title="Juridiction"
-              onClear={() => setFilters((f) => ({ ...f, juridiction: null }))}
-            >
-              <View style={styles.chips}>
-                {juridictions.map((j) => (
-                  <Chip
-                    key={j}
-                    label={j}
-                    selected={filters.juridiction === j}
-                    onPress={() =>
-                      setFilters((f) => ({
-                        ...f,
-                        juridiction: toggleSingle(f.juridiction, j),
-                      }))
-                    }
-                  />
-                ))}
-              </View>
-            </Accordion>
-
-            <Accordion
-              title="Formation"
-              onClear={() => setFilters((f) => ({ ...f, formation: null }))}
-            >
-              <View style={styles.chips}>
-                {formations.map((form) => (
-                  <Chip
-                    key={form}
-                    label={form}
-                    selected={filters.formation === form}
-                    onPress={() =>
-                      setFilters((f) => ({
-                        ...f,
-                        formation: toggleSingle(f.formation, form),
-                      }))
-                    }
-                  />
-                ))}
-              </View>
-            </Accordion>
-
-            <Accordion title="Année" onClear={() => setFilters((f) => ({ ...f, year: null }))}>
-              <View style={styles.chips}>
-                {years.map((y) => (
-                  <Chip
-                    key={y}
-                    label={y}
-                    selected={filters.year === y}
-                    onPress={() =>
-                      setFilters((f) => ({ ...f, year: toggleSingle(f.year, y) }))
-                    }
-                  />
-                ))}
-              </View>
-            </Accordion>
-
-            {importanceLevels.length ? (
-              <Accordion
-                title="Importance"
-                onClear={() => setFilters((f) => ({ ...f, importance: null }))}
-              >
-                <View style={styles.chips}>
-                  {importanceLevels.map((lvl) => (
-                    <Chip
-                      key={lvl}
-                      label={"★".repeat(lvl)}
-                      selected={filters.importance === lvl}
-                      onPress={() =>
-                        setFilters((f) => ({
-                          ...f,
-                          importance: f.importance === lvl ? null : lvl,
-                        }))
-                      }
-                    />
-                  ))}
-                </View>
-              </Accordion>
-            ) : null}
-          </View>
 
           {filtersActive ? (
             <View style={styles.list}>
@@ -265,8 +125,8 @@ export default function ArretsListScreen() {
             </View>
           ) : (
             <Text style={styles.empty}>
-              Sélectionnez un thème, une juridiction, une année… ou saisissez une
-              recherche pour afficher les fiches.
+              Saisissez une recherche, une référence, ou ouvrez le filtre
+              avancé pour afficher les fiches.
             </Text>
           )}
         </ScrollView>

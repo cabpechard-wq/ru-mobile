@@ -1,14 +1,21 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { GrandesFiltresBar } from "../../src/components/GrandesFiltresBar";
 import { PageHeader } from "../../src/components/PageHeader";
+import {
+  buildById,
+  EMPTY_CHRONO_FILTERS,
+  filterChronologie,
+  type ChronoFilters,
+} from "../../src/data/chronologie";
 import { useEnchainementsData } from "../../src/data/EnchainementsProvider";
 import { useEnchainementsSession } from "../../src/data/EnchainementsSessionContext";
 import { useManuelData } from "../../src/data/ManuelProvider";
 import { displayNom, pickRandomChain, shuffledOrder, type Decision } from "../../src/data/enchainements";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function EnchainementsSetupScreen() {
@@ -19,15 +26,21 @@ export default function EnchainementsSetupScreen() {
   const { setSession } = useEnchainementsSession();
   const [draw, setDraw] = useState<Decision[] | null>(null);
   const [empty, setEmpty] = useState(false);
+  const [filters, setFilters] = useState<ChronoFilters>(EMPTY_CHRONO_FILTERS);
 
   const chapterExercises =
     cours && manuel.status === "ready" ? manuel.exercises[cours] : undefined;
-  const decisions =
+  const pool =
     state.status === "ready"
       ? cours && chapterExercises
         ? state.decisions.filter((d) => chapterExercises.jurisprudence.includes(d.nom))
         : state.decisions
       : [];
+  const byId = useMemo(() => buildById(pool), [pool]);
+  const decisions = useMemo(
+    () => filterChronologie(pool, byId, filters),
+    [pool, byId, filters]
+  );
 
   const tirer = () => {
     const chain = pickRandomChain(decisions);
@@ -43,7 +56,7 @@ export default function EnchainementsSetupScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.enchainements]} />
+      <PageHeader trail={[...TRAIL.enchainements]} />
       {state.status === "loading" ? <LoadingScreen /> : null}
       {state.status === "error" ? (
         <ErrorScreen message={state.message} onRetry={state.reload} />
@@ -57,6 +70,35 @@ export default function EnchainementsSetupScreen() {
               : "Remettez un enchaînement de décisions liées dans l'ordre chronologique — dates cachées."}
             {state.source === "demo" ? " (démo)" : ""}
           </Text>
+
+          <GrandesFiltresBar
+            decisions={pool}
+            filters={filters}
+            onChange={setFilters}
+            extra={
+              <Pressable
+                onPress={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    relatedOnly: !prev.relatedOnly,
+                  }))
+                }
+                style={[
+                  styles.relatedToggle,
+                  filters.relatedOnly && styles.relatedToggleOn,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.relatedToggleText,
+                    filters.relatedOnly && styles.relatedToggleTextOn,
+                  ]}
+                >
+                  Uniquement les décisions liées
+                </Text>
+              </Pressable>
+            }
+          />
 
           <View style={styles.card}>
             <Pressable
@@ -135,4 +177,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  relatedToggle: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.card,
+  },
+  relatedToggleOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  relatedToggleText: { color: colors.ink, fontWeight: "700", fontSize: 13 },
+  relatedToggleTextOn: { color: "#fff" },
 });

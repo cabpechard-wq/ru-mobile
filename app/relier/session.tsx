@@ -4,14 +4,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "../../src/components/PageHeader";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
-import { formatDateFr } from "../../src/data/decisions";
+import { formatDateFr, starsLabel } from "../../src/data/decisions";
 import {
   derangement,
   pickBatch,
   type RelierItem,
 } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** Chiffres de relation — plus gros, lisibles au tactile. */
@@ -59,8 +59,8 @@ export default function RelierSessionScreen() {
   const chrono = useChronologieData();
   const items = session.items;
   const pack = session.pack || "arrets";
-  const sectionLabel =
-    pack === "notions" ? SECTION.relationsNotions : SECTION.relationsArrets;
+  const trail =
+    pack === "notions" ? TRAIL.relationsNotions : TRAIL.relationsArrets;
 
   const [rightOrder, setRightOrder] = useState<RelierItem[]>(() =>
     derangement(items),
@@ -169,7 +169,7 @@ export default function RelierSessionScreen() {
   if (!items.length) {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[sectionLabel, "Exercice"]} />
+        <PageHeader trail={[...trail, "Exercice"]} />
         <Text style={styles.empty}>Aucune série en cours.</Text>
       </SafeAreaView>
     );
@@ -181,7 +181,7 @@ export default function RelierSessionScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <PageHeader
-        trail={[sectionLabel, "Exercice"]}
+        trail={[...trail, "Exercice"]}
         right={
           <Text style={styles.summary} numberOfLines={1}>
             {Object.keys(pairs).length} / {items.length} reliés
@@ -198,7 +198,7 @@ export default function RelierSessionScreen() {
         <View style={styles.board}>
           <View style={styles.boardHead}>
             <Text style={styles.colTitle}>
-              {pack === "notions" ? "Notion" : "Nom"}
+              {pack === "notions" ? "Notion" : "Décision"}
             </Text>
             <Text style={styles.colTitle}>
               {pack === "notions" ? "Définition" : "Objet"}
@@ -244,7 +244,12 @@ export default function RelierSessionScreen() {
                             </Text>
                           </View>
                         ) : null}
-                        <Text style={styles.cellText}>{left.recto}</Text>
+                        <Text style={styles.cellText}>
+                          {left.recto}
+                          {pack === "arrets" && starsLabel(left.importance_level)
+                            ? `  ${starsLabel(left.importance_level)}`
+                            : ""}
+                        </Text>
                         {isCorrect === true && pack === "arrets" ? (
                           <View style={styles.okMeta}>
                             {exactDateFor(left) ? (

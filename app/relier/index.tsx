@@ -2,9 +2,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Accordion } from "../../src/components/Accordion";
-import { Chip } from "../../src/components/Chip";
 import { ErrorScreen, LoadingScreen } from "../../src/components/DataStatus";
+import { GrandesFiltresBar } from "../../src/components/GrandesFiltresBar";
 import { PageHeader } from "../../src/components/PageHeader";
 import {
   DEFAULT_RELIER_SERIES,
@@ -12,12 +11,20 @@ import {
   resolveRelierBatchSize,
   type RelierSeriesSize,
 } from "../../src/components/RelierSeriesPicker";
-import { starsLabel } from "../../src/data/cards";
+import {
+  decisionFromRelierLike,
+  EMPTY_ARRETS_FILTERS,
+  filterDecisions,
+  hasActiveArretsFilters,
+  matchDecision,
+  type ArretsFilters,
+} from "../../src/data/arrets";
+import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { useManuelData } from "../../src/data/ManuelProvider";
 import { useRelierData } from "../../src/data/RelierProvider";
-import { filterRelierItems, pickBatch, type RelierItem } from "../../src/data/relier";
+import { pickBatch, type RelierItem } from "../../src/data/relier";
 import { useRelierSession } from "../../src/data/RelierSessionContext";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function RelierSetupScreen() {
@@ -25,12 +32,12 @@ export default function RelierSetupScreen() {
   const { cours } = useLocalSearchParams<{ cours?: string }>();
   const relierState = useRelierData();
   const manuel = useManuelData();
+  const chrono = useChronologieData();
   const { setSession } = useRelierSession();
-  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
-  const [selectedNotions, setSelectedNotions] = useState<string[]>([]);
-  const [selectedImportance, setSelectedImportance] = useState<number[]>([]);
+  const [filters, setFilters] = useState<ArretsFilters>(EMPTY_ARRETS_FILTERS);
   const [seriesSize, setSeriesSize] =
     useState<RelierSeriesSize>(DEFAULT_RELIER_SERIES);
+  const chronoDecisions = chrono.status === "ready" ? chrono.decisions : [];
 
   const chapterExercises =
     cours && manuel.status === "ready" ? manuel.exercises[cours] : undefined;
@@ -44,12 +51,16 @@ export default function RelierSetupScreen() {
   const filteredItems = useMemo(() => {
     if (relierState.status !== "ready") return [];
     const base = chapterItems ?? relierState.data.allItems;
-    return filterRelierItems(base, {
-      themes: selectedThemes,
-      notions: selectedNotions,
-      importance: selectedImportance,
-    });
-  }, [relierState, chapterItems, selectedThemes, selectedNotions, selectedImportance]);
+    if (!hasActiveArretsFilters(filters)) return base;
+    const mapped = base.map((item) =>
+      decisionFromRelierLike(
+        item,
+        matchDecision(chronoDecisions, { id: item.id, nom: item.recto })
+      )
+    );
+    const kept = new Set(filterDecisions(mapped, filters).map((d) => d.id));
+    return base.filter((i) => kept.has(i.id));
+  }, [relierState, chapterItems, filters, chronoDecisions]);
 
   const start = () => {
     const n = resolveRelierBatchSize(seriesSize, filteredItems.length);
@@ -63,23 +74,20 @@ export default function RelierSetupScreen() {
     router.push("/relier/session");
   };
 
-  const toggleTheme = (t: string) => {
-    setSelectedThemes((prev) => (prev.includes(t) ? [] : [t]));
-  };
-  const toggleNotion = (n: string) => {
-    setSelectedNotions((prev) =>
-      prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]
+  const mappedForBar = useMemo(() => {
+    if (relierState.status !== "ready") return [];
+    const base = chapterItems ?? relierState.data.allItems;
+    return base.map((item) =>
+      decisionFromRelierLike(
+        item,
+        matchDecision(chronoDecisions, { id: item.id, nom: item.recto })
+      )
     );
-  };
-  const toggleImportance = (lvl: number) => {
-    setSelectedImportance((prev) =>
-      prev.includes(lvl) ? prev.filter((x) => x !== lvl) : [...prev, lvl]
-    );
-  };
+  }, [relierState, chapterItems, chronoDecisions]);
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.relationsArrets]} />
+      <PageHeader trail={[...TRAIL.relationsArrets]} />
       {relierState.status === "loading" ? <LoadingScreen /> : null}
       {relierState.status === "error" ? (
         <ErrorScreen message={relierState.message} onRetry={relierState.reload} />
@@ -100,7 +108,7 @@ export default function RelierSetupScreen() {
                 >
                   Grandes notions
                 </Text>
-                . Reliez chaque arrêt à son objet. Touchez un élément à gauche,
+                . Reliez chaque décision à son objet. Touchez un élément à gauche,
                 puis sa correspondance à droite.
               </>
             )}
@@ -108,59 +116,11 @@ export default function RelierSetupScreen() {
           </Text>
 
           <View style={styles.card}>
-            {relierState.data.allThemes.length ? (
-              <Accordion
-                title="Thèmes (1 seul)"
-                onClear={() => setSelectedThemes([])}
-              >
-                <View style={styles.chips}>
-                  {relierState.data.allThemes.map((t) => (
-                    <Chip
-                      key={t}
-                      label={t}
-                      selected={selectedThemes.includes(t)}
-                      onPress={() => toggleTheme(t)}
-                    />
-                  ))}
-                </View>
-              </Accordion>
-            ) : null}
-
-            {relierState.data.allNotions.length ? (
-              <Accordion
-                title="Notions"
-                onClear={() => setSelectedNotions([])}
-              >
-                <View style={styles.chips}>
-                  {relierState.data.allNotions.map((n) => (
-                    <Chip
-                      key={n}
-                      label={n}
-                      selected={selectedNotions.includes(n)}
-                      onPress={() => toggleNotion(n)}
-                    />
-                  ))}
-                </View>
-              </Accordion>
-            ) : null}
-
-            {relierState.data.presentImportanceLevels.length ? (
-              <Accordion
-                title="Importance"
-                onClear={() => setSelectedImportance([])}
-              >
-                <View style={styles.chips}>
-                  {relierState.data.presentImportanceLevels.map((lvl) => (
-                    <Chip
-                      key={lvl}
-                      label={starsLabel(lvl)}
-                      selected={selectedImportance.includes(lvl)}
-                      onPress={() => toggleImportance(lvl)}
-                    />
-                  ))}
-                </View>
-              </Accordion>
-            ) : null}
+            <GrandesFiltresBar
+              decisions={mappedForBar}
+              filters={filters}
+              onChange={setFilters}
+            />
 
             <Text style={styles.count}>
               <Text style={styles.countNum}>{filteredItems.length}</Text> carte(s)
@@ -216,7 +176,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 10,
   },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   count: { fontSize: 15, fontWeight: "600", color: colors.ink, marginTop: 4 },
   countNum: {
     color: colors.accent,

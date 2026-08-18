@@ -28,7 +28,7 @@ import {
   collectDictionaryThemes,
   filterEntriesByCoursTheme,
 } from "../../src/data/coursThemes";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** `../arrets/ce-2021-.../` -> `ce-2021-...` */
@@ -113,6 +113,7 @@ export default function DictionnaireScreen() {
   const manuel = useManuelData();
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState("");
+  const [letter, setLetter] = useState("");
 
   const knownDecisionIds = useMemo(
     () => (chrono.status === "ready" ? new Set(chrono.decisions.map((d) => d.id)) : null),
@@ -136,10 +137,13 @@ export default function DictionnaireScreen() {
     );
   }, [state, query, theme]);
   const groups = useMemo(() => groupByLetter(filtered), [filtered]);
+  const visibleGroups = letter
+    ? groups.filter((g) => g.letter === letter)
+    : groups;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.dictionnaire]} />
+      <PageHeader trail={[...TRAIL.dictionnaire]} />
       {state.status === "loading" ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
@@ -162,6 +166,32 @@ export default function DictionnaireScreen() {
             onChangeText={setQuery}
             autoCapitalize="none"
           />
+
+          {groups.length ? (
+            <View style={styles.letterIndex}>
+              {groups.map((g) => (
+                <Pressable
+                  key={g.letter}
+                  onPress={() =>
+                    setLetter((prev) => (prev === g.letter ? "" : g.letter))
+                  }
+                  style={[
+                    styles.letterChip,
+                    letter === g.letter && styles.letterChipOn,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.letterChipText,
+                      letter === g.letter && styles.letterChipTextOn,
+                    ]}
+                  >
+                    {g.letter}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
 
           {themes.length ? (
             <Accordion
@@ -186,11 +216,11 @@ export default function DictionnaireScreen() {
             </Accordion>
           ) : null}
 
-          {groups.map((g) => (
+          {visibleGroups.map((g) => (
             <Accordion
-              key={`${g.letter}-${query ? "search" : "browse"}-${theme || "all"}`}
+              key={`${g.letter}-${query ? "search" : "browse"}-${theme || "all"}-${letter || "all"}`}
               title={`${g.letter} (${g.items.length})`}
-              initiallyOpen={!!query.trim()}
+              initiallyOpen={!!query.trim() || letter === g.letter}
             >
               <View style={styles.groupList}>
                 {g.items.map((e) => (
@@ -207,7 +237,7 @@ export default function DictionnaireScreen() {
             </Accordion>
           ))}
 
-          {!groups.length ? (
+          {!visibleGroups.length ? (
             <Text style={styles.empty}>Aucun terme ne correspond.</Text>
           ) : null}
         </ScrollView>
@@ -246,6 +276,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     marginBottom: 14,
   },
+  letterIndex: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 14,
+  },
+  letterChip: {
+    minWidth: 32,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: colors.radius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    alignItems: "center",
+  },
+  letterChipOn: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  letterChipText: { color: colors.ink, fontWeight: "700", fontSize: 13 },
+  letterChipTextOn: { color: "#fff" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 7, paddingBottom: 8 },
   groupList: { gap: 10 },
   entry: {

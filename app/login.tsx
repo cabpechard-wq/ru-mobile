@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "../src/components/PageHeader";
 import { useAuth } from "../src/data/AuthContext";
-import { SECTION } from "../src/data/sections";
+import { TRAIL } from "../src/data/sections";
 import { colors } from "../src/theme/colors";
 
 export default function LoginScreen() {
@@ -37,7 +37,7 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.login]} />
+      <PageHeader trail={[...TRAIL.login]} />
       <View style={styles.wrap}>
         <Text style={styles.title}>Connexion</Text>
         <Text style={styles.sub}>

@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Speech from "expo-speech";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,7 +16,6 @@ import { useCardsData } from "../../src/data/CardsProvider";
 import {
   buildById,
   buildLineageTree,
-  decadeKey,
   directRelations,
   flattenLineageTree,
   LINEAGE_DEPTH,
@@ -32,7 +32,7 @@ import {
   starsLabel,
   type Decision,
 } from "../../src/data/decisions";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 function ficheHref(d: Decision): string {
@@ -130,6 +130,13 @@ export default function ArretFicheScreen() {
 
   const [fromSite, setFromSite] = useState<string | undefined>();
   const [siteLoading, setSiteLoading] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      Speech.stop();
+    };
+  }, []);
 
   useEffect(() => {
     setFromSite(undefined);
@@ -178,7 +185,7 @@ export default function ArretFicheScreen() {
   if (state.status === "loading") {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[SECTION.arrets]} />
+        <PageHeader trail={[...TRAIL.arrets]} />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
@@ -188,7 +195,7 @@ export default function ArretFicheScreen() {
   if (state.status === "error") {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[SECTION.arrets]} />
+        <PageHeader trail={[...TRAIL.arrets]} />
         <ErrorScreen message={state.message} onRetry={state.reload} />
       </SafeAreaView>
     );
@@ -196,7 +203,7 @@ export default function ArretFicheScreen() {
   if (state.status === "idle-full") {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[SECTION.arrets]} />
+        <PageHeader trail={[...TRAIL.arrets]} />
         <View style={styles.center}>
           <Text style={styles.centerTitle}>Fonds non chargé</Text>
           <Text style={styles.centerText}>
@@ -212,7 +219,7 @@ export default function ArretFicheScreen() {
   if (!decision) {
     return (
       <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[SECTION.arrets]} />
+        <PageHeader trail={[...TRAIL.arrets]} />
         <Text style={styles.empty}>
           Fiche introuvable dans le jeu chargé actuellement (démo).
         </Text>
@@ -227,11 +234,36 @@ export default function ArretFicheScreen() {
   ].filter(Boolean);
 
   const showLineage = lineageNodes.length > 1;
-  const decade = decadeKey(decision.annee);
+
+  const listenText = [
+    decision.nom,
+    decision.objet,
+    considerant,
+    decision.faits,
+  ]
+    .map((t) => (t || "").trim())
+    .filter(Boolean)
+    .join(". ");
+
+  const toggleListen = () => {
+    if (speaking) {
+      Speech.stop();
+      setSpeaking(false);
+      return;
+    }
+    if (!listenText) return;
+    setSpeaking(true);
+    Speech.speak(listenText, {
+      language: "fr-FR",
+      onDone: () => setSpeaking(false),
+      onStopped: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.arrets, decision.nom]} />
+      <PageHeader trail={[...TRAIL.arrets, decision.nom]} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{decision.nom}</Text>
         <View style={styles.metaRow}>
@@ -247,16 +279,31 @@ export default function ArretFicheScreen() {
           ))}
         </View>
 
-        <Pressable
-          testID="voir-chronologie"
-          onPress={() =>
-            router.push(`/chronologie?decade=${decade}` as never)
-          }
-          style={styles.chronoLink}
-          hitSlop={8}
-        >
-          <Text style={styles.chronoLinkText}>Voir dans la chronologie</Text>
-        </Pressable>
+        <View style={styles.actionRow}>
+          <Pressable
+            testID="ecouter-fiche"
+            onPress={toggleListen}
+            style={styles.listenBtn}
+            hitSlop={8}
+            disabled={!listenText}
+          >
+            <Text style={[styles.listenText, !listenText && styles.listenDisabled]}>
+              {speaking ? "Arrêter" : "Écouter"}
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="voir-chronologie"
+            onPress={() =>
+              router.push(
+                `/chronologie?id=${encodeURIComponent(decision.slugFiche || decision.id)}` as never
+              )
+            }
+            style={styles.chronoLink}
+            hitSlop={8}
+          >
+            <Text style={styles.chronoLinkText}>Voir dans la Chronologie</Text>
+          </Pressable>
+        </View>
 
         <HighlightSection title="Objet" text={decision.objet} />
         <HighlightSection title="Portée" text={decision.portee} />
@@ -382,10 +429,23 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   metaStars: { color: colors.accent, borderColor: colors.accent },
-  chronoLink: {
-    alignSelf: "flex-start",
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 14,
     marginTop: -4,
+    gap: 12,
+  },
+  listenBtn: { paddingVertical: 4 },
+  listenText: {
+    color: colors.accent,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  listenDisabled: { color: colors.muted, fontWeight: "600" },
+  chronoLink: {
+    marginLeft: "auto",
+    paddingVertical: 4,
   },
   chronoLinkText: {
     color: colors.muted,

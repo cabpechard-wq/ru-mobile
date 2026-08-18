@@ -23,7 +23,7 @@ import {
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
 import { useFlipcardsDicoData } from "../../src/data/FlipcardsDicoProvider";
 import { useManuelData } from "../../src/data/ManuelProvider";
-import { SECTION } from "../../src/data/sections";
+import { TRAIL } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
 import { useFilters } from "../../src/hooks/useFilters";
 import { colors } from "../../src/theme/colors";
@@ -274,7 +274,7 @@ export default function FlipcardsNotionsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <PageHeader trail={[SECTION.flipcardsNotions]} />
+      <PageHeader trail={[...TRAIL.flipcardsNotions]} />
       {cardsState.status === "loading" ? <LoadingScreen /> : null}
       {cardsState.status === "error" ? (
         <ErrorScreen message={cardsState.message} onRetry={cardsState.reload} />

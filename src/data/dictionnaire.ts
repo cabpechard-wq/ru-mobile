@@ -1,3 +1,5 @@
+import { sortFr } from "./sortFr";
+
 export type CoursLink = { path: string; label: string };
 
 export type DictEntry = {
@@ -43,12 +45,14 @@ export type LetterGroup = {
 };
 
 function firstLetter(term: string): string {
-  const c = (term || "").trim().charAt(0).toUpperCase();
-  return c || "#";
+  const c = (term || "").trim().charAt(0);
+  if (!c) return "#";
+  const n = c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  return /[A-Z]/.test(n) ? n : "#";
 }
 
 export function groupByLetter(entries: DictEntry[]): LetterGroup[] {
-  const sorted = [...entries].sort((a, b) => a.term.localeCompare(b.term, "fr"));
+  const sorted = [...entries].sort((a, b) => sortFr(a.term, b.term));
   const groups = new Map<string, DictEntry[]>();
   sorted.forEach((e) => {
     const letter = firstLetter(e.term);
@@ -57,7 +61,7 @@ export function groupByLetter(entries: DictEntry[]): LetterGroup[] {
     groups.set(letter, list);
   });
   return [...groups.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], "fr"))
+    .sort((a, b) => sortFr(a[0], b[0]))
     .map(([letter, items]) => ({ letter, items }));
 }
 

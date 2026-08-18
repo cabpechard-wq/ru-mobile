@@ -1,4 +1,5 @@
 import { splitCoursLinks, type DictEntry } from "./dictionnaire";
+import { sortFr } from "./sortFr";
 
 /** Aligné sur `dico-cours-themes.js` du site. */
 export function termKey(s: string): string {
@@ -34,9 +35,7 @@ export function collectDictionaryThemes(entries: DictEntry[]): string[] {
   entries.forEach((e) => {
     coursLabelsForEntry(e).forEach((label) => set.add(label));
   });
-  return [...set].sort((a, b) =>
-    a.localeCompare(b, "fr", { sensitivity: "base" })
-  );
+  return [...set].sort(sortFr);
 }
 
 export function filterEntriesByCoursTheme(
@@ -76,7 +75,7 @@ export function buildCoursIndex(entries: DictEntry[]): {
   });
 
   const catalog = [...catalogMap.values()].sort((a, b) =>
-    a.label.localeCompare(b.label, "fr", { sensitivity: "base" })
+    sortFr(a.label, b.label)
   );
   return { byTerm, catalog };
 }
