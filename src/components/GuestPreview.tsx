@@ -2,7 +2,7 @@ import * as Linking from "expo-linking";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../data/AuthContext";
-import { CHECKOUT_URL } from "../data/config";
+import { ACCOUNT_URL, CHECKOUT_URL, FORGOT_PASSWORD_URL } from "../data/config";
 import { colors } from "../theme/colors";
 
 /** ~5 lignes, comme `.manuel-prose.is-preview` (8.2em) sur le site. */
@@ -10,6 +10,14 @@ const PREVIEW_MAX_HEIGHT = 132;
 
 export function openInscriptions(): void {
   Linking.openURL(CHECKOUT_URL);
+}
+
+export function openForgotPassword(): void {
+  Linking.openURL(FORGOT_PASSWORD_URL);
+}
+
+export function openAccount(): void {
+  Linking.openURL(ACCOUNT_URL);
 }
 
 /**

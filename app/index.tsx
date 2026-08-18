@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { homeAccessLabel, type HomeAccess } from "../src/data/accessLabels";
 import { useAuth } from "../src/data/AuthContext";
-import { openInscriptions } from "../src/components/GuestPreview";
+import { openAccount, openInscriptions } from "../src/components/GuestPreview";
 import { colors } from "../src/theme/colors";
 
 type Entry = { label: string; href: string; access: HomeAccess };
@@ -104,9 +104,19 @@ function AccountBar() {
         <Text style={styles.accountText} numberOfLines={1}>
           Connecté · {auth.email}
         </Text>
-        <Pressable testID="logout-link" onPress={() => auth.logout()}>
-          <Text style={styles.accountAction}>Déconnexion</Text>
-        </Pressable>
+        <View style={styles.accountActions}>
+          <Pressable
+            testID="account-link"
+            onPress={openAccount}
+            accessibilityRole="link"
+            accessibilityLabel="Mon compte"
+          >
+            <Text style={styles.accountAction}>Mon compte</Text>
+          </Pressable>
+          <Pressable testID="logout-link" onPress={() => auth.logout()}>
+            <Text style={styles.accountAction}>Déconnexion</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
