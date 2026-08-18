@@ -4,8 +4,6 @@ import { Chip } from "./Chip";
 import { RELIER_BOARD_MAX } from "../data/relier";
 import { colors } from "../theme/colors";
 
-export { RELIER_BOARD_MAX };
-
 export type RelierSeriesSize = "all" | 3 | 5 | 10;
 
 export const DEFAULT_RELIER_SERIES: RelierSeriesSize = "all";
