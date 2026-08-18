@@ -20,6 +20,7 @@ import { breadcrumb, refForChapterId } from "../data/manuel";
 import { neighborsForChapter } from "../data/manuelNav";
 import { useRelierDicoData } from "../data/RelierDicoProvider";
 import { useRelierData } from "../data/RelierProvider";
+import { pickBatch } from "../data/relier";
 import { useRelierSession } from "../data/RelierSessionContext";
 import { useAuth } from "../data/AuthContext";
 import { TRAIL } from "../data/sections";
@@ -89,7 +90,13 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
       relierState.data.allItems.filter((i) => names.has(i.recto))
     );
     if (items.length < 2) return;
-    setRelierSession({ items, pack: "arrets", pool: items, batchSize: items.length });
+    const batch = pickBatch(items, items.length);
+    setRelierSession({
+      items: batch,
+      pack: "arrets",
+      pool: items,
+      batchSize: batch.length,
+    });
     router.push("/relier/session");
   };
 
@@ -122,11 +129,12 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
   const startRelierNotions = () => {
     const items = shuffle(notionRelier);
     if (items.length < 2) return;
+    const batch = pickBatch(items, items.length);
     setRelierSession({
-      items,
+      items: batch,
       pack: "notions",
       pool: items,
-      batchSize: items.length,
+      batchSize: batch.length,
     });
     router.push("/relier/session");
   };

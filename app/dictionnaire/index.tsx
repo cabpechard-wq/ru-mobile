@@ -26,6 +26,7 @@ import {
 } from "../../src/data/dictionnaire";
 import {
   collectDictionaryThemes,
+  displayLabel,
   filterEntriesByCoursTheme,
 } from "../../src/data/coursThemes";
 import { TRAIL } from "../../src/data/sections";
@@ -199,7 +200,7 @@ export default function DictionnaireScreen() {
 
           {themes.length ? (
             <Accordion
-              title={theme ? `Thème : ${theme}` : "Thème (tous)"}
+              title={theme ? `Thème : ${displayLabel(theme)}` : "Thème (tous)"}
               onClear={theme ? () => setTheme("") : undefined}
             >
               <View style={styles.chips}>
@@ -211,7 +212,7 @@ export default function DictionnaireScreen() {
                 {themes.map((t) => (
                   <Chip
                     key={t}
-                    label={t}
+                    label={displayLabel(t)}
                     selected={theme === t}
                     onPress={() => setTheme((prev) => (prev === t ? "" : t))}
                   />

@@ -1,4 +1,5 @@
 import { cardImportanceLevel, type Card } from "./cards";
+import { displayLabel } from "./coursThemes";
 import { uniqueSortedFr } from "./sortFr";
 import { type Decision } from "./decisions";
 
@@ -113,9 +114,8 @@ export function matchDecision(
 export function themeLabel(theme?: string | null): string {
   const raw = (theme || "").trim();
   if (!raw) return "";
-  // "42-Compétence…" → "Compétence…"
-  const m = raw.match(/^\d+\s*[-–—]\s*(.+)$/);
-  return (m ? m[1] : raw).trim();
+  // "42-Compétence…" → "Compétence…" (`CoursThemes.displayLabel`)
+  return displayLabel(raw) || raw;
 }
 
 export function filterDecisions(
