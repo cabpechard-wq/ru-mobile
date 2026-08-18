@@ -9,7 +9,11 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "fr.lesressourcesuniversitaires.flipcards"
+      "bundleIdentifier": "fr.lesressourcesuniversitaires.flipcards",
+      "buildNumber": "13",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "lru.droit_public_et_administratif",
