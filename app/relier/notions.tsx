@@ -20,6 +20,7 @@ import {
   type CoursTheme,
 } from "../../src/data/coursThemes";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { useManuelData } from "../../src/data/ManuelProvider";
 import { useRelierDicoData } from "../../src/data/RelierDicoProvider";
 import { filterRelierItems, pickBatch, type RelierItem } from "../../src/data/relier";
@@ -31,6 +32,7 @@ export default function RelierNotionsSetupScreen() {
   const router = useRouter();
   const { cours } = useLocalSearchParams<{ cours?: string }>();
   const relierState = useRelierDicoData();
+  const fonds = useFondsMeta();
   const dico = useDictionnaireData();
   const manuel = useManuelData();
   const { setSession } = useRelierSession();
@@ -101,8 +103,13 @@ export default function RelierNotionsSetupScreen() {
             {chapterExercises
               ? `Fonds du chapitre « ${chapterExercises.title} ». `
               : ""}
-            {PAGE_TITLE_NOTIONS}. Reliez chaque notion à sa définition.
-            {relierState.source === "demo" ? " (démo)" : ""}
+            {PAGE_TITLE_NOTIONS}. Reliez chaque notion à sa définition (
+            {fondsRatio(
+              relierState.data.allItems.length,
+              fonds.dictionnaire,
+              relierState.source !== "demo"
+            )}
+            ).
           </Text>
 
           <View style={styles.card}>

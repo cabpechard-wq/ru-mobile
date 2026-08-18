@@ -13,6 +13,7 @@ import {
 } from "../../src/data/chronologie";
 import { useEnchainementsData } from "../../src/data/EnchainementsProvider";
 import { useEnchainementsSession } from "../../src/data/EnchainementsSessionContext";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { useManuelData } from "../../src/data/ManuelProvider";
 import { displayNom, pickRandomChain, shuffledOrder, type Decision } from "../../src/data/enchainements";
 import { TRAIL } from "../../src/data/sections";
@@ -22,6 +23,7 @@ export default function EnchainementsSetupScreen() {
   const router = useRouter();
   const { cours } = useLocalSearchParams<{ cours?: string }>();
   const state = useEnchainementsData();
+  const fonds = useFondsMeta();
   const manuel = useManuelData();
   const { setSession } = useEnchainementsSession();
   const [draw, setDraw] = useState<Decision[] | null>(null);
@@ -67,8 +69,11 @@ export default function EnchainementsSetupScreen() {
           <Text style={styles.sub}>
             {chapterExercises
               ? `Fonds du chapitre « ${chapterExercises.title} » (${decisions.length} arrêt(s)).`
-              : "Remettez un enchaînement de décisions liées dans l'ordre chronologique — dates cachées."}
-            {state.source === "demo" ? " (démo)" : ""}
+              : `Remettez un enchaînement de décisions liées dans l'ordre chronologique — dates cachées (${fondsRatio(
+                  state.decisions.length,
+                  fonds.jurisprudence,
+                  state.source !== "demo"
+                )}).`}
           </Text>
 
           <GrandesFiltresBar

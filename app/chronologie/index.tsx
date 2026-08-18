@@ -24,6 +24,7 @@ import {
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { displayNom, starsLabel, type Decision } from "../../src/data/decisions";
 import { TRAIL } from "../../src/data/sections";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { colors } from "../../src/theme/colors";
 
 function DecisionRow({
@@ -91,6 +92,7 @@ export default function ChronologieListScreen() {
     id?: string;
   }>();
   const state = useChronologieData();
+  const fonds = useFondsMeta();
   const [filters, setFilters] = useState<ChronoFilters>(EMPTY_CHRONO_FILTERS);
   const initialDecade = normalizeDecadeParam(decadeParam) || DEFAULT_DECADE;
   const [activeDecade, setActiveDecade] = useState<string | null>(initialDecade);
@@ -175,9 +177,14 @@ export default function ChronologieListScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Chronologie</Text>
           <Text style={styles.sub}>
-            {filtered.length} / {state.decisions.length} décisions
-            {state.source === "demo" ? " · démo" : ""}. Frise par décennies —
-            les pastilles signalent les décisions liées.
+            {state.source === "demo"
+              ? `Démonstration de la frise chronologique (${fondsRatio(
+                  state.decisions.length,
+                  fonds.jurisprudence,
+                  false
+                )} décisions).`
+              : `${filtered.length} / ${state.decisions.length} décisions.`}{" "}
+            Frise par décennies — les pastilles signalent les décisions liées.
           </Text>
 
           <GrandesFiltresBar

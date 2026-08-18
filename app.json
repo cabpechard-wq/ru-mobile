@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "lru.droit_public_et_administratif",
-      "versionCode": 10,
+      "versionCode": 11,
       "adaptiveIcon": {
         "backgroundColor": "#0f766e",
         "foregroundImage": "./assets/android-icon-foreground.png",
