@@ -283,6 +283,12 @@ export function ManuelChapterView({
         <Text style={styles.stickyTitle} numberOfLines={2}>
           {chapter.title}
         </Text>
+        {isRoot ? (
+          <Text style={styles.stickyLead}>
+            Cours structuré couvrant le programme universitaire (
+            {state.ficheCount} fiches).
+          </Text>
+        ) : null}
         <View style={styles.chapNav}>
           <Pressable
             disabled={!prev}
@@ -371,6 +377,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: colors.title,
+  },
+  stickyLead: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
   },
   chapNav: { flexDirection: "row", gap: 8, marginTop: 2 },
   chapNavBtn: {

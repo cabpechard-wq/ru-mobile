@@ -29,6 +29,7 @@ import {
   filterEntriesByCoursTheme,
 } from "../../src/data/coursThemes";
 import { TRAIL } from "../../src/data/sections";
+import { useFondsMeta } from "../../src/data/fondsMeta";
 import { colors } from "../../src/theme/colors";
 
 /** `../arrets/ce-2021-.../` -> `ce-2021-...` */
@@ -114,6 +115,7 @@ export default function DictionnaireScreen() {
   const [query, setQuery] = useState("");
   const [theme, setTheme] = useState("");
   const [letter, setLetter] = useState("");
+  const fonds = useFondsMeta();
 
   const knownDecisionIds = useMemo(
     () => (chrono.status === "ready" ? new Set(chrono.decisions.map((d) => d.id)) : null),
@@ -156,7 +158,9 @@ export default function DictionnaireScreen() {
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Dictionnaire</Text>
-          <Text style={styles.sub}>{state.entries.length} notions.</Text>
+          <Text style={styles.sub}>
+            {fonds.dictionnaire} entrées de droit public et administratif.
+          </Text>
 
           <TextInput
             style={styles.search}

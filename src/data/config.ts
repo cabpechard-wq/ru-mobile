@@ -33,6 +33,8 @@ export const CONSIDERANTS_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/consider
  * d'auth) — un seul endpoint, pas de distinction démo/membre.
  */
 export const DICTIONNAIRE_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries.json`;
+export const DICTIONNAIRE_META_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries-meta.json`;
+export const CHRONOLOGIE_META_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-meta.json`;
 
 /**
  * Cours (ex-`manuel/`) : JSON d'index public. L'UI tronque hors session.

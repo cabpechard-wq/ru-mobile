@@ -23,6 +23,7 @@ import { useCardsData } from "../../src/data/CardsProvider";
 import { PAGE_TITLE } from "../../src/data/config";
 import { type Card } from "../../src/data/cards";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { TRAIL } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
 import { colors } from "../../src/theme/colors";
@@ -46,6 +47,7 @@ function FlipcardsContent({
   const router = useRouter();
   const { setSession } = useStudySession();
   const chrono = useChronologieData();
+  const fonds = useFondsMeta();
   const [filters, setFilters] = useState<ArretsFilters>(EMPTY_ARRETS_FILTERS);
   const chronoDecisions = chrono.status === "ready" ? chrono.decisions : [];
 
@@ -100,8 +102,13 @@ function FlipcardsContent({
       <Text style={styles.title}>{PAGE_TITLE}</Text>
       <Text style={styles.sub}>
         Recherche, référence et filtre avancé — comme sur le site. Laissez vide
-        pour tout le set ({allCards.length} cartes
-        {source === "demo" ? " · démo" : ""}).
+        pour tout le set (
+        {fondsRatio(
+          allCards.length,
+          fonds.jurisprudence,
+          source !== "demo"
+        )}{" "}
+        cartes).
       </Text>
 
       <GrandesFiltresBar

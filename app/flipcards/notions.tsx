@@ -22,6 +22,7 @@ import {
 } from "../../src/data/coursThemes";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
 import { useFlipcardsDicoData } from "../../src/data/FlipcardsDicoProvider";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { useManuelData } from "../../src/data/ManuelProvider";
 import { TRAIL } from "../../src/data/sections";
 import { useStudySession } from "../../src/data/StudyContext";
@@ -66,6 +67,7 @@ function FlipcardsNotionsContent({
 }) {
   const router = useRouter();
   const { setSession } = useStudySession();
+  const fonds = useFondsMeta();
   const [selectedCours, setSelectedCours] = useState(initialCoursTheme);
 
   useEffect(() => {
@@ -130,8 +132,13 @@ function FlipcardsNotionsContent({
           ? `${chapterHint}. `
           : ""}
         Thème = pages du Cours (un seul choix), puis lettre — comme sur le web.
-        Laissez vide pour tout le set ({allCards.length} cartes
-        {source === "demo" ? " · démo" : ""}).
+        Laissez vide pour tout le set (
+        {fondsRatio(
+          allCards.length,
+          fonds.dictionnaire,
+          source !== "demo"
+        )}{" "}
+        cartes).
       </Text>
 
       <View style={styles.card}>
