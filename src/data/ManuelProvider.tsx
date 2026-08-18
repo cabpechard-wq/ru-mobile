@@ -20,6 +20,7 @@ type ManuelState =
       status: "ready";
       chapters: Map<string, Chapter>;
       rootIds: string[];
+      ficheCount: number;
       exercises: ManuelExercisesData;
     };
 
@@ -47,6 +48,7 @@ export function ManuelProvider({ children }: { children: React.ReactNode }) {
           status: "ready",
           chapters: buildChapterIndex(json),
           rootIds: json.rootIds || [],
+          ficheCount: json.count || json.chapters?.length || 0,
           exercises,
         })
       )

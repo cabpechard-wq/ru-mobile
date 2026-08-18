@@ -3,24 +3,26 @@
  * Jeu de démo public, non authentifié.
  */
 export const SITE_BASE_URL = "https://www.ressources-universitaires.fr";
+export const CHECKOUT_URL = `${SITE_BASE_URL}/checkout/`;
+export const FORGOT_PASSWORD_URL = `${SITE_BASE_URL}/membre/forgot/`;
+export const ACCOUNT_URL = `${SITE_BASE_URL}/membre/compte/`;
+
 export const DEMO_CARDS_ENDPOINT = `${SITE_BASE_URL}/demo/cards.json`;
 export const DEMO_RELIER_ENDPOINT = `${SITE_BASE_URL}/demo-relier/cards.json`;
-export const DEMO_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/demo-enchainements-logiques/data/chronology-decisions-demo.json`;
 /**
- * Pas de Worker ici : contrairement à flipcards/relier, ce fonds n'est pas
- * scellé (pas d'entrée dans CONTENT_PACKS côté Worker) — juste un JSON
- * public non répertorié, comme sur le site. Le login ne fait que
- * choisir quelle URL utiliser, il n'apporte pas de contrôle d'accès
- * supplémentaire ici (fidèle à la posture actuelle du site).
+ * Démo Chronologie / Enchaînements : même JSON (site PR #27,
+ * `demo-chronologie/`). Hors connexion uniquement.
  */
-export const MEMBER_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/enchainements-logiques/data/chronology-decisions.json`;
+export const DEMO_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/demo-chronologie/data/chronology-decisions-demo.json`;
+export const DEMO_ENCHAINEMENTS_ENDPOINT = DEMO_CHRONOLOGIE_ENDPOINT;
 
 /**
- * Chronologie / Fiches d'arrêts : même fonds de décisions.
- * Démo auto ; fonds complet (~3 Mo) sur action explicite.
+ * Fonds jurisprudence membres — JSON public sur le site, chargé seulement
+ * une fois connecté (pas de pack Worker). Même fichier pour Chronologie
+ * et Enchaînements.
  */
-export const DEMO_CHRONOLOGIE_ENDPOINT = DEMO_ENCHAINEMENTS_ENDPOINT;
 export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-decisions.json`;
+export const MEMBER_ENCHAINEMENTS_ENDPOINT = FULL_CHRONOLOGIE_ENDPOINT;
 /**
  * Index slug → Considérant, extrait des fiches HTML. Best-effort : l'app
  * embarque le même fichier (`assets/considerants.json`) si le réseau échoue
@@ -33,19 +35,21 @@ export const CONSIDERANTS_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/consider
  * d'auth) — un seul endpoint, pas de distinction démo/membre.
  */
 export const DICTIONNAIRE_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries.json`;
+export const DICTIONNAIRE_META_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries-meta.json`;
+export const CHRONOLOGIE_META_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-meta.json`;
 
 /**
- * Manuel (Cours) : contenu public, comme le Dictionnaire.
+ * Cours (ex-`manuel/`) : JSON d'index public. L'UI tronque hors session.
  */
-export const MANUEL_ENDPOINT = `${SITE_BASE_URL}/manuel/chapters.json`;
+export const MANUEL_ENDPOINT = `${SITE_BASE_URL}/cours/chapters.json`;
 
 /**
- * Exercices liés par chapitre (relations Notion Jurisprudence/Index portées
- * par le manuel) : {ref: {title, jurisprudence: [...noms], notions: [...noms]}}.
- * Même fichier que celui consommé côté web pour filtrer Flipcards/Relier/
- * Enchaînements sur `?cours=DP-XXX`.
+ * Exercices liés par chapitre : {ref: {title, jurisprudence[], notions[]}}.
  */
-export const MANUEL_EXERCISES_ENDPOINT = `${SITE_BASE_URL}/manuel/exercices.json`;
+export const MANUEL_EXERCISES_ENDPOINT = `${SITE_BASE_URL}/cours/exercices.json`;
+
+/** Aperçu audio hors session (site PR #30) — lecture complète une fois connecté. */
+export const TTS_PREVIEW_MS = 30_000;
 
 /**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié

@@ -8,10 +8,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { homeAccessLabel, type HomeAccess } from "../src/data/accessLabels";
 import { useAuth } from "../src/data/AuthContext";
+import { openAccount, openInscriptions } from "../src/components/GuestPreview";
 import { colors } from "../src/theme/colors";
 
-type Entry = { label: string; href: string };
+type Entry = { label: string; href: string; access: HomeAccess };
 type Hub = { title: string; entries: Entry[] };
 type Rubrique = {
   title: string;
@@ -27,15 +29,15 @@ const RUBRIQUES: Rubrique[] = [
   {
     title: "Cours magistral",
     entries: [
-      { label: "Cours de Droit public et administratif", href: "/manuel" },
-      { label: "Chronologie", href: "/chronologie" },
+      { label: "Cours de Droit public et administratif", href: "/manuel", access: "preview" },
+      { label: "Chronologie", href: "/chronologie", access: "demo" },
     ],
   },
   {
     title: "Bibliothèque universitaire",
     entries: [
-      { label: "Dictionnaire", href: "/dictionnaire" },
-      { label: "Fiches d'arrêts", href: "/arrets" },
+      { label: "Dictionnaire", href: "/dictionnaire", access: "public" },
+      { label: "Fiches d'arrêts", href: "/arrets", access: "preview" },
     ],
   },
   {
@@ -44,34 +46,50 @@ const RUBRIQUES: Rubrique[] = [
       {
         title: "Flipcards",
         entries: [
-          { label: "Grands arrêts", href: "/flipcards" },
-          { label: "Grandes notions", href: "/flipcards/notions" },
+          { label: "Grands arrêts", href: "/flipcards", access: "demo" },
+          { label: "Grandes notions", href: "/flipcards/notions", access: "demo" },
         ],
       },
       {
         title: "Relations",
         entries: [
-          { label: "Grands arrêts", href: "/relier" },
-          { label: "Grandes notions", href: "/relier/notions" },
+          { label: "Grands arrêts", href: "/relier", access: "demo" },
+          { label: "Grandes notions", href: "/relier/notions", access: "demo" },
         ],
       },
     ],
     entries: [
-      { label: "Enchaînements (chrono)logiques", href: "/enchainements" },
+      { label: "Enchaînements (chrono)logiques", href: "/enchainements", access: "demo" },
     ],
   },
 ];
 
-function EntryLink({ entry }: { entry: Entry }) {
+function EntryLink({
+  entry,
+  isMember,
+}: {
+  entry: Entry;
+  isMember: boolean;
+}) {
   const router = useRouter();
+  const access = homeAccessLabel(entry.access, isMember);
   return (
     <Pressable
       testID={`home-entry-${entry.href}`}
       onPress={() => router.push(entry.href as never)}
       style={styles.entry}
     >
-      <Text style={styles.entryText}>{entry.label}</Text>
-      <Text style={styles.entryArrow}>→</Text>
+      <View style={styles.entryBody}>
+        <Text style={styles.entryText}>{entry.label}</Text>
+        <Text
+          style={[
+            styles.entryAccess,
+            entry.access === "public" && styles.entryAccessPublic,
+          ]}
+        >
+          {access}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -86,9 +104,19 @@ function AccountBar() {
         <Text style={styles.accountText} numberOfLines={1}>
           Connecté · {auth.email}
         </Text>
-        <Pressable testID="logout-link" onPress={() => auth.logout()}>
-          <Text style={styles.accountAction}>Déconnexion</Text>
-        </Pressable>
+        <View style={styles.accountActions}>
+          <Pressable
+            testID="account-link"
+            onPress={openAccount}
+            accessibilityRole="link"
+            accessibilityLabel="Mon compte"
+          >
+            <Text style={styles.accountAction}>Mon compte</Text>
+          </Pressable>
+          <Pressable testID="logout-link" onPress={() => auth.logout()}>
+            <Text style={styles.accountAction}>Déconnexion</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -96,14 +124,21 @@ function AccountBar() {
   return (
     <View style={styles.accountBar}>
       <Text style={styles.accountText}>Mode démo</Text>
-      <Pressable testID="login-link" onPress={() => router.push("/login")}>
-        <Text style={styles.accountAction}>Espace pédagogique</Text>
-      </Pressable>
+      <View style={styles.accountActions}>
+        <Pressable testID="signup-link" onPress={openInscriptions}>
+          <Text style={styles.accountAction}>S’inscrire</Text>
+        </Pressable>
+        <Pressable testID="login-link" onPress={() => router.push("/login")}>
+          <Text style={styles.accountAction}>Connexion</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
 export default function HomeScreen() {
+  const auth = useAuth();
+  const isMember = auth.status === "authenticated";
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <AccountBar />
@@ -124,7 +159,11 @@ export default function HomeScreen() {
                 <Text style={styles.hubTitle}>{hub.title}</Text>
                 <View style={styles.entryList}>
                   {hub.entries.map((e) => (
-                    <EntryLink key={`${hub.title}-${e.href}`} entry={e} />
+                    <EntryLink
+                      key={`${hub.title}-${e.href}`}
+                      entry={e}
+                      isMember={isMember}
+                    />
                   ))}
                 </View>
               </View>
@@ -133,7 +172,7 @@ export default function HomeScreen() {
             {rubrique.entries?.length ? (
               <View style={styles.entryList}>
                 {rubrique.entries.map((e) => (
-                  <EntryLink key={e.href} entry={e} />
+                  <EntryLink key={e.href} entry={e} isMember={isMember} />
                 ))}
               </View>
             ) : null}
@@ -154,7 +193,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 4,
   },
-  accountText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
+  accountText: { color: colors.muted, fontSize: 12, fontWeight: "600", flex: 1, paddingRight: 8 },
+  accountActions: { flexDirection: "row", alignItems: "center", gap: 14 },
   accountAction: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   scroll: { padding: 16, paddingBottom: 48 },
   brandPrimary: {
@@ -198,9 +238,6 @@ const styles = StyleSheet.create({
   },
   entryList: { gap: 6 },
   entry: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
@@ -208,12 +245,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
+  entryBody: { gap: 3 },
   entryText: {
-    flex: 1,
     color: colors.ink,
     fontWeight: "600",
     fontSize: 14,
-    paddingRight: 10,
   },
-  entryArrow: { color: colors.accent, fontWeight: "700", fontSize: 16 },
+  entryAccess: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  entryAccessPublic: { color: colors.accent },
 });

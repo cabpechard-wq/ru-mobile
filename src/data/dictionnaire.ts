@@ -9,22 +9,27 @@ export type DictEntry = {
   cours: CoursLink[];
 };
 
-/** Le champ `cours` mélange en fait chapitres du Manuel et arrêts liés. */
+/** Le champ `cours` mélange chapitres du cours (`/cours/` ou ancien `/manuel/`) et arrêts. */
+export function isCoursChapterPath(path: string): boolean {
+  const p = String(path || "");
+  return p.includes("/cours/") || p.includes("/manuel/");
+}
+
 export function splitCoursLinks(cours: CoursLink[]): {
   chapitres: CoursLink[];
   arrets: CoursLink[];
 } {
-  const chapitres = cours.filter((c) => c.path.includes("/manuel/"));
+  const chapitres = cours.filter((c) => isCoursChapterPath(c.path));
   const arrets = cours.filter((c) => c.path.includes("/arrets/"));
   return { chapitres, arrets };
 }
 
 /**
- * `../manuel/dp-000/dp-200/dp-210/` → `dp-000-dp-200-dp-210`
- * (même schéma d'id que manuel/chapters.json).
+ * `../cours/dp-000/dp-200/dp-210/` → `dp-000-dp-200-dp-210`
+ * (même schéma d'id que cours/chapters.json ; ancien préfixe `/manuel/` accepté).
  */
 export function chapterIdFromManuelPath(path: string): string | null {
-  const m = path.match(/\/manuel\/(.+?)\/?$/);
+  const m = path.match(/\/(?:cours|manuel)\/(.+?)\/?$/);
   if (!m) return null;
   const segments = m[1]
     .split("/")

@@ -20,6 +20,7 @@ import {
   type ArretsFilters,
 } from "../../src/data/arrets";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { useManuelData } from "../../src/data/ManuelProvider";
 import { useRelierData } from "../../src/data/RelierProvider";
 import { pickBatch, type RelierItem } from "../../src/data/relier";
@@ -31,6 +32,7 @@ export default function RelierSetupScreen() {
   const router = useRouter();
   const { cours } = useLocalSearchParams<{ cours?: string }>();
   const relierState = useRelierData();
+  const fonds = useFondsMeta();
   const manuel = useManuelData();
   const chrono = useChronologieData();
   const { setSession } = useRelierSession();
@@ -108,11 +110,16 @@ export default function RelierSetupScreen() {
                 >
                   Grandes notions
                 </Text>
-                . Reliez chaque décision à son objet. Touchez un élément à gauche,
-                puis sa correspondance à droite.
+                . Associez chaque décision (
+                {fondsRatio(
+                  relierState.data.allItems.length,
+                  fonds.jurisprudence,
+                  relierState.source !== "demo"
+                )}
+                ) à son objet. Touchez un élément à gauche, puis sa
+                correspondance à droite.
               </>
             )}
-            {relierState.source === "demo" ? " (démo)" : ""}
           </Text>
 
           <View style={styles.card}>

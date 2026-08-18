@@ -15,7 +15,6 @@ import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 /** Chiffres de relation — plus gros, lisibles au tactile. */
-const BADGE_NUMBERS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 
 function ficheSlug(item: RelierItem): string | null {
   if (item.slug && /^(ce|tc|cons|cass|caa|cedh)/i.test(item.slug)) {
@@ -240,7 +239,7 @@ export default function RelierSessionScreen() {
                             ]}
                           >
                             <Text style={styles.badgeText}>
-                              {BADGE_NUMBERS[pairedIndex] || "•"}
+                              {String(pairedIndex + 1)}
                             </Text>
                           </View>
                         ) : null}
@@ -308,7 +307,7 @@ export default function RelierSessionScreen() {
                             ]}
                           >
                             <Text style={styles.badgeText}>
-                              {BADGE_NUMBERS[rowIndex] || "•"}
+                              {String(rowIndex + 1)}
                             </Text>
                           </View>
                         ) : null}

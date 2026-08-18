@@ -20,6 +20,7 @@ import {
 } from "../../src/data/arrets";
 import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { displayNom, starsLabel, type Decision } from "../../src/data/decisions";
+import { fondsRatio, useFondsMeta } from "../../src/data/fondsMeta";
 import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
@@ -57,6 +58,7 @@ function DecisionRow({
 export default function ArretsListScreen() {
   const router = useRouter();
   const state = useChronologieData();
+  const fonds = useFondsMeta();
   const [filters, setFilters] = useState<ArretsFilters>(EMPTY_ARRETS_FILTERS);
 
   const decisions = state.status === "ready" ? state.decisions : [];
@@ -79,25 +81,21 @@ export default function ArretsListScreen() {
       {state.status === "error" ? (
         <ErrorScreen message={state.message} onRetry={state.reload} />
       ) : null}
-      {state.status === "idle-full" ? (
-        <View style={styles.center}>
-          <Text style={styles.centerTitle}>Fiches d'arrêts</Text>
-          <Text style={styles.centerText}>
-            Fonds complet : 995 décisions (~3 Mo).
-          </Text>
-          <Pressable testID="load-full" style={styles.btn} onPress={state.loadFull}>
-            <Text style={styles.btnText}>Charger le fonds complet</Text>
-          </Pressable>
-        </View>
-      ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Fiches d'arrêts</Text>
           <Text style={styles.sub}>
             {filtersActive
-              ? `${filtered.length} résultat(s) sur ${decisions.length}`
-              : `${decisions.length} fiche(s) — choisissez un filtre pour afficher la liste`}
-            {state.source === "demo" ? " · démo" : ""}.
+              ? `${filtered.length} résultat(s) sur ${fondsRatio(
+                  decisions.length,
+                  fonds.jurisprudence,
+                  state.source !== "demo"
+                )}`
+              : `Décisions importantes (${fondsRatio(
+                  decisions.length,
+                  fonds.jurisprudence,
+                  state.source !== "demo"
+                )}) : faits, enjeu, solution, mise en perspective, objet, portée… Choisissez un filtre pour afficher la liste.`}
           </Text>
 
           <GrandesFiltresBar

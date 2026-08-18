@@ -20,11 +20,14 @@ import { breadcrumb, refForChapterId } from "../data/manuel";
 import { neighborsForChapter } from "../data/manuelNav";
 import { useRelierDicoData } from "../data/RelierDicoProvider";
 import { useRelierData } from "../data/RelierProvider";
+import { pickBatch } from "../data/relier";
 import { useRelierSession } from "../data/RelierSessionContext";
+import { useAuth } from "../data/AuthContext";
 import { TRAIL } from "../data/sections";
 import { useStudySession } from "../data/StudyContext";
 import { colors } from "../theme/colors";
 import { ErrorScreen, LoadingScreen } from "./DataStatus";
+import { GuestPreview } from "./GuestPreview";
 import { PageHeader } from "./PageHeader";
 import { Prose, type ProseLinkHandler } from "./Prose";
 
@@ -87,7 +90,13 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
       relierState.data.allItems.filter((i) => names.has(i.recto))
     );
     if (items.length < 2) return;
-    setRelierSession({ items, pack: "arrets", pool: items, batchSize: items.length });
+    const batch = pickBatch(items, items.length);
+    setRelierSession({
+      items: batch,
+      pack: "arrets",
+      pool: items,
+      batchSize: batch.length,
+    });
     router.push("/relier/session");
   };
 
@@ -120,11 +129,12 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
   const startRelierNotions = () => {
     const items = shuffle(notionRelier);
     if (items.length < 2) return;
+    const batch = pickBatch(items, items.length);
     setRelierSession({
-      items,
+      items: batch,
       pack: "notions",
       pool: items,
-      batchSize: items.length,
+      batchSize: batch.length,
     });
     router.push("/relier/session");
   };
@@ -218,6 +228,7 @@ export function ManuelChapterView({
   isRoot?: boolean;
 }) {
   const router = useRouter();
+  const auth = useAuth();
   const state = useManuelData();
   const dico = useDictionnaireData();
   const chrono = useChronologieData();
@@ -258,7 +269,7 @@ export function ManuelChapterView({
       const known =
         chrono.status === "ready" &&
         chrono.decisions.some((d) => d.id === run.target);
-      if (known || chrono.status === "idle-full") {
+      if (known) {
         router.push(`/arrets/${run.target}`);
       }
       return;
@@ -280,6 +291,12 @@ export function ManuelChapterView({
         <Text style={styles.stickyTitle} numberOfLines={2}>
           {chapter.title}
         </Text>
+        {isRoot ? (
+          <Text style={styles.stickyLead}>
+            Cours structuré couvrant le programme universitaire (
+            {state.ficheCount} fiches).
+          </Text>
+        ) : null}
         <View style={styles.chapNav}>
           <Pressable
             disabled={!prev}
@@ -310,9 +327,15 @@ export function ManuelChapterView({
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {chapter.blocks.length ? (
-          <View style={styles.prose}>
-            <Prose blocks={chapter.blocks} onLink={onLink} collapsible />
-          </View>
+          <GuestPreview>
+            <View style={styles.prose}>
+              <Prose
+                blocks={chapter.blocks}
+                onLink={onLink}
+                collapsible={auth.status === "authenticated"}
+              />
+            </View>
+          </GuestPreview>
         ) : null}
 
         {(() => {
@@ -362,6 +385,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: colors.title,
+  },
+  stickyLead: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
   },
   chapNav: { flexDirection: "row", gap: 8, marginTop: 2 },
   chapNavBtn: {
