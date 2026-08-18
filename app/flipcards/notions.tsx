@@ -18,6 +18,7 @@ import {
   buildCoursIndex,
   catalogPresentFor,
   coursLabelsForTerm,
+  displayLabel,
   type CoursTheme,
 } from "../../src/data/coursThemes";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
@@ -93,8 +94,8 @@ function FlipcardsNotionsContent({
 
   const hintPrefix = selectedCours
     ? selectionHint.startsWith("Tout le set")
-      ? selectedCours
-      : `${selectedCours} · ${selectionHint}`
+      ? displayLabel(selectedCours)
+      : `${displayLabel(selectedCours)} · ${selectionHint}`
     : selectionHint;
 
   const enterStudy = (cards: Card[], hint: string) => {
@@ -152,7 +153,7 @@ function FlipcardsNotionsContent({
               {coursCatalog.map((t) => (
                 <Chip
                   key={t.label}
-                  label={t.label}
+                  label={displayLabel(t.label)}
                   colorName={t.color}
                   selected={selectedCours === t.label}
                   onPress={() =>

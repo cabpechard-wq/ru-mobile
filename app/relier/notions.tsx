@@ -17,6 +17,7 @@ import {
   buildCoursIndex,
   catalogPresentFor,
   coursLabelsForTerm,
+  displayLabel,
   type CoursTheme,
 } from "../../src/data/coursThemes";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
@@ -123,7 +124,7 @@ export default function RelierNotionsSetupScreen() {
                   {catalog.map((t) => (
                     <Chip
                       key={t.label}
-                      label={t.label}
+                      label={displayLabel(t.label)}
                       colorName={t.color}
                       selected={selectedCours === t.label}
                       onPress={() =>
