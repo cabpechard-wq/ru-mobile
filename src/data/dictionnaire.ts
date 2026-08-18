@@ -1,3 +1,5 @@
+import { sortFr } from "./sortFr";
+
 export type CoursLink = { path: string; label: string };
 
 export type DictEntry = {
@@ -17,6 +19,20 @@ export function splitCoursLinks(cours: CoursLink[]): {
   return { chapitres, arrets };
 }
 
+/**
+ * `../manuel/dp-000/dp-200/dp-210/` → `dp-000-dp-200-dp-210`
+ * (même schéma d'id que manuel/chapters.json).
+ */
+export function chapterIdFromManuelPath(path: string): string | null {
+  const m = path.match(/\/manuel\/(.+?)\/?$/);
+  if (!m) return null;
+  const segments = m[1]
+    .split("/")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return segments.length ? segments.join("-") : null;
+}
+
 export type DictionnaireData = {
   kind: string;
   count: number;
@@ -29,12 +45,14 @@ export type LetterGroup = {
 };
 
 function firstLetter(term: string): string {
-  const c = (term || "").trim().charAt(0).toUpperCase();
-  return c || "#";
+  const c = (term || "").trim().charAt(0);
+  if (!c) return "#";
+  const n = c.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  return /[A-Z]/.test(n) ? n : "#";
 }
 
 export function groupByLetter(entries: DictEntry[]): LetterGroup[] {
-  const sorted = [...entries].sort((a, b) => a.term.localeCompare(b.term, "fr"));
+  const sorted = [...entries].sort((a, b) => sortFr(a.term, b.term));
   const groups = new Map<string, DictEntry[]>();
   sorted.forEach((e) => {
     const letter = firstLetter(e.term);
@@ -43,7 +61,7 @@ export function groupByLetter(entries: DictEntry[]): LetterGroup[] {
     groups.set(letter, list);
   });
   return [...groups.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0], "fr"))
+    .sort((a, b) => sortFr(a[0], b[0]))
     .map(([letter, items]) => ({ letter, items }));
 }
 

@@ -33,6 +33,10 @@ export function Accordion({
   const [open, setOpen] = useState(initiallyOpen);
 
   useEffect(() => {
+    setOpen(initiallyOpen);
+  }, [initiallyOpen]);
+
+  useEffect(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [open]);
 

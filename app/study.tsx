@@ -9,10 +9,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlipCard } from "../src/components/FlipCard";
+import { PageHeader } from "../src/components/PageHeader";
+import { pickAsideRandom } from "../src/data/arrets";
+import { ASIDE_RANDOM_COUNT } from "../src/data/config";
 import { useCardsData } from "../src/data/CardsProvider";
-import { cardImportanceLevel, starsLabel } from "../src/data/cards";
+import { useChronologieData } from "../src/data/ChronologieProvider";
+import { cardImportanceLevel, starsLabel, type Card } from "../src/data/cards";
+import { displayNom, type Decision } from "../src/data/decisions";
+import { useDictionnaireData } from "../src/data/DictionnaireProvider";
+import { TRAIL } from "../src/data/sections";
 import { useStudySession } from "../src/data/StudyContext";
-import { colors, notionTone } from "../src/theme/colors";
+import { colors } from "../src/theme/colors";
 
 const PLAY_RECTO_MS = 3000;
 const PLAY_VERSO_MS = 7000;
@@ -38,37 +45,24 @@ function DetailBox({ title, text }: { title: string; text?: string }) {
   );
 }
 
-function ColoredTag({
-  label,
-  group,
-  colorForLabel,
-}: {
-  label: string;
-  group: "theme" | "notion";
-  colorForLabel: (label: string, group: "theme" | "notion") => string;
-}) {
-  const tone = notionTone(colorForLabel(label, group));
-  return (
-    <Text
-      style={[
-        styles.tag,
-        { borderColor: tone.border, color: colors.muted },
-      ]}
-    >
-      {label}
-    </Text>
-  );
+function cardKey(c: Card): string {
+  return c.id || c.recto;
 }
 
 export default function StudyScreen() {
   const router = useRouter();
   const { session } = useStudySession();
   const cardsState = useCardsData();
-  const colorForLabel =
-    cardsState.status === "ready"
-      ? cardsState.data.colorForLabel
-      : () => "default";
+  const chrono = useChronologieData();
+  const dico = useDictionnaireData();
+  const pack = session.pack || "arrets";
+  const trail =
+    pack === "notions" ? TRAIL.flipcardsNotions : TRAIL.flipcardsArrets;
   const base = session.cards;
+  const selectedIds = useMemo(() => {
+    if (session.selectedIds?.length) return new Set(session.selectedIds);
+    return new Set(base.map(cardKey));
+  }, [session.selectedIds, base]);
 
   const [order, setOrder] = useState(() => base.map((_, i) => i));
   const [index, setIndex] = useState(0);
@@ -76,6 +70,7 @@ export default function StudyScreen() {
   const [shuffled, setShuffled] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [asideTick, setAsideTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flippedRef = useRef(flipped);
   const indexRef = useRef(index);
@@ -93,6 +88,7 @@ export default function StudyScreen() {
     setShuffled(false);
     setPlaying(false);
     setDetailsOpen(false);
+    setAsideTick((n) => n + 1);
   }, [base]);
 
   useEffect(() => {
@@ -107,6 +103,72 @@ export default function StudyScreen() {
   );
   cardsLenRef.current = cards.length;
   const current = cards[index];
+
+  /** Pool « N au hasard » : Chronologie (arrêts) ou Dictionnaire (notions). */
+  const asidePool: {
+    id: string;
+    label: string;
+    href: string;
+    objet?: string;
+    portee?: string;
+    definition?: string;
+    stars?: string;
+  }[] = useMemo(() => {
+    if (pack === "notions") {
+      if (dico.status !== "ready") return [];
+      return dico.entries.map((e) => ({
+        id: e.id,
+        label: e.term,
+        href: `/dictionnaire/${e.id}`,
+        definition: e.definition,
+      }));
+    }
+    if (chrono.status === "ready") {
+      return chrono.decisions.map((d: Decision) => ({
+        id: d.id,
+        label: displayNom(d.nom, true),
+        href: `/arrets/${d.id}`,
+        objet: d.objet,
+        portee: d.portee,
+        stars: starsLabel(d.importance ?? 0),
+      }));
+    }
+    if (cardsState.status === "ready") {
+      return cardsState.data.allCards.map((c) => ({
+        id: cardKey(c),
+        label: c.recto,
+        href: `/arrets/${cardKey(c)}`,
+        objet: c.objet,
+        portee: c.portee,
+        stars: starsLabel(cardImportanceLevel(c)),
+      }));
+    }
+    return [];
+  }, [pack, chrono, cardsState, dico]);
+
+  const asideItems = useMemo(() => {
+    void asideTick;
+    const selected =
+      pack === "notions"
+        ? new Set(
+            base.map((c) => (c.recto || "").toLowerCase()).filter(Boolean)
+          )
+        : selectedIds;
+    // Pour notions : exclure les termes déjà dans la sélection d'étude (par label).
+    if (pack === "notions") {
+      const outside = asidePool.filter(
+        (d) => !selected.has(d.label.toLowerCase())
+      );
+      if (outside.length < ASIDE_RANDOM_COUNT) return [];
+      const out = [...outside];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out.slice(0, ASIDE_RANDOM_COUNT);
+    }
+    return pickAsideRandom(asidePool, selectedIds, ASIDE_RANDOM_COUNT);
+  }, [asidePool, selectedIds, asideTick, pack, base]);
 
   const stopPlay = () => {
     setPlaying(false);
@@ -166,12 +228,13 @@ export default function StudyScreen() {
     });
   };
 
+  const ficheId = current ? cardKey(current) : "";
+  const showFicheLink = pack === "arrets" && !!ficheId;
+
   if (!base.length || !current) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Accueil</Text>
-        </Pressable>
+        <PageHeader trail={[...trail, "Étudier"]} />
         <Text style={styles.empty}>Aucune carte pour ces filtres.</Text>
       </SafeAreaView>
     );
@@ -179,21 +242,15 @@ export default function StudyScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.bar}>
-          <Pressable
-            onPress={() => {
-              stopPlay();
-              router.back();
-            }}
-          >
-            <Text style={styles.backText}>← Accueil</Text>
-          </Pressable>
+      <PageHeader
+        trail={[...trail, "Étudier"]}
+        right={
           <Text style={styles.summary} numberOfLines={2}>
             {session.hint}
           </Text>
-        </View>
-
+        }
+      />
+      <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.progressTrack}>
           <View
             style={[
@@ -210,6 +267,16 @@ export default function StudyScreen() {
           onFlip={() => setFlipped((v) => !v)}
           stars={starsLabel(cardImportanceLevel(current))}
         />
+
+        {showFicheLink ? (
+          <Pressable
+            testID="open-fiche"
+            onPress={() => router.push(`/arrets/${ficheId}`)}
+            style={styles.ficheLink}
+          >
+            <Text style={styles.ficheLinkText}>Ouvrir la fiche d'arrêt →</Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.controls}>
           <View style={styles.side}>
@@ -258,62 +325,87 @@ export default function StudyScreen() {
           <View style={[styles.side, styles.sideRight]} />
         </View>
 
-        <Pressable
-          onPress={() => setDetailsOpen((v) => !v)}
-          style={[styles.detailsBtn, detailsOpen && styles.detailsBtnActive]}
-          accessibilityState={{ expanded: detailsOpen }}
-        >
-          <Text
-            style={[
-              styles.detailsBtnText,
-              detailsOpen && styles.detailsBtnTextActive,
-            ]}
-          >
-            Objet · Portée · Considérant
-          </Text>
-        </Pressable>
+        {pack === "arrets" ? (
+          <>
+            <Pressable
+              onPress={() => setDetailsOpen((v) => !v)}
+              style={[styles.detailsBtn, detailsOpen && styles.detailsBtnActive]}
+              accessibilityState={{ expanded: detailsOpen }}
+            >
+              <Text
+                style={[
+                  styles.detailsBtnText,
+                  detailsOpen && styles.detailsBtnTextActive,
+                ]}
+              >
+                Objet · Portée · Considérant
+              </Text>
+            </Pressable>
 
-        {detailsOpen ? (
-          <View style={styles.details}>
-            <DetailBox title="Objet" text={current.objet} />
-            <DetailBox title="Portée" text={current.portee} />
-            <DetailBox title="Considérant de principe" text={current.considerant} />
-          </View>
+            {detailsOpen ? (
+              <View style={styles.details}>
+                <DetailBox title="Objet" text={current.objet} />
+                <DetailBox title="Portée" text={current.portee} />
+                <DetailBox
+                  title="Considérant de principe"
+                  text={current.considerant}
+                />
+              </View>
+            ) : null}
+          </>
         ) : null}
 
-        <View style={styles.list}>
-          {cards.map((c) => (
-            <View key={c.id || c.recto} style={styles.row}>
-              <View style={styles.rowLeft}>
-                <Text style={styles.rowTitle}>{c.recto}</Text>
-                <View style={styles.tags}>
-                  {starsLabel(cardImportanceLevel(c)) ? (
-                    <Text style={styles.rowStars}>
-                      {starsLabel(cardImportanceLevel(c))}
-                    </Text>
-                  ) : null}
-                  {(c.themes || []).map((t) => (
-                    <ColoredTag
-                      key={`t-${t}`}
-                      label={t}
-                      group="theme"
-                      colorForLabel={colorForLabel}
-                    />
-                  ))}
-                  {(c.notions || []).map((n) => (
-                    <ColoredTag
-                      key={`n-${n}`}
-                      label={n}
-                      group="notion"
-                      colorForLabel={colorForLabel}
-                    />
-                  ))}
-                </View>
-              </View>
-              <Text style={styles.rowVerso}>{c.verso || "—"}</Text>
+        {asideItems.length === ASIDE_RANDOM_COUNT ? (
+          <View style={styles.aside}>
+            <View style={styles.asideHead}>
+              <Text style={styles.asideTitle}>
+                {pack === "notions"
+                  ? `${ASIDE_RANDOM_COUNT} notions au hasard`
+                  : `${ASIDE_RANDOM_COUNT} au hasard`}
+              </Text>
+              <Pressable onPress={() => setAsideTick((n) => n + 1)}>
+                <Text style={styles.asideRefresh}>Autres</Text>
+              </Pressable>
             </View>
-          ))}
-        </View>
+            <Text style={styles.asideHint}>
+              {pack === "notions"
+                ? "Tirées du Dictionnaire, hors sélection."
+                : `Hors sélection (${asidePool.length - selectedIds.size} / ${asidePool.length}).`}
+            </Text>
+            {asideItems.map((item) => (
+              <Pressable
+                key={item.id}
+                style={styles.asideRow}
+                onPress={() => router.push(item.href as never)}
+              >
+                <Text style={styles.asideRowText} numberOfLines={2}>
+                  {item.label}
+                  {pack === "arrets" && item.stars ? `  ${item.stars}` : ""}
+                </Text>
+                {pack === "arrets" ? (
+                  <>
+                    {item.objet ? (
+                      <Text style={styles.asideMeta} numberOfLines={3}>
+                        <Text style={styles.asideMetaLabel}>Objet — </Text>
+                        {item.objet}
+                      </Text>
+                    ) : null}
+                    {item.portee ? (
+                      <Text style={styles.asideMeta} numberOfLines={3}>
+                        <Text style={styles.asideMetaLabel}>Portée — </Text>
+                        {item.portee}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : item.definition ? (
+                  <Text style={styles.asideMeta} numberOfLines={4}>
+                    {item.definition}
+                  </Text>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -321,25 +413,18 @@ export default function StudyScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: 16, paddingBottom: 48, maxWidth: 560, width: "100%", alignSelf: "center" },
-  bar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 14,
-  },
-  backText: {
-    fontWeight: "600",
-    color: colors.accent,
-    fontSize: 14,
+  scroll: {
+    padding: 16,
+    paddingBottom: 48,
+    maxWidth: 560,
+    width: "100%",
+    alignSelf: "center",
   },
   summary: {
-    flex: 1,
-    textAlign: "right",
     color: colors.muted,
     fontWeight: "500",
-    fontSize: 13,
+    fontSize: 11,
+    textAlign: "right",
   },
   progressTrack: {
     height: 2,
@@ -351,22 +436,13 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 448,
   },
-  progressFill: {
-    height: "100%",
-    backgroundColor: colors.accent,
-  },
-  controls: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  progressFill: { height: "100%", backgroundColor: colors.accent },
+  ficheLink: { alignSelf: "center", marginTop: 10, paddingVertical: 4 },
+  ficheLinkText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  controls: { marginTop: 12, flexDirection: "row", alignItems: "center" },
   side: { flex: 1, flexDirection: "row", gap: 2 },
   sideRight: { justifyContent: "flex-end" },
-  center: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  center: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconBtn: {
     width: 36,
     height: 36,
@@ -395,7 +471,7 @@ const styles = StyleSheet.create({
   },
   detailsBtn: {
     alignSelf: "center",
-    marginTop: 12,
+    marginTop: 14,
     borderWidth: 2,
     borderColor: "#d1d5db",
     backgroundColor: "#fff",
@@ -407,17 +483,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     borderColor: colors.accent,
   },
-  detailsBtnText: {
-    color: colors.muted,
-    fontWeight: "600",
-    fontSize: 13,
-  },
+  detailsBtnText: { color: colors.muted, fontWeight: "600", fontSize: 13 },
   detailsBtnTextActive: { color: "#fff" },
-  details: {
-    marginTop: 12,
-    gap: 10,
-    width: "100%",
-  },
+  details: { marginTop: 12, gap: 10, width: "100%" },
   detailBox: {
     backgroundColor: "#fff",
     borderWidth: 1,
@@ -435,52 +503,34 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: 6,
   },
-  detailText: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.versoText,
-  },
-  detailEmpty: {
-    color: colors.muted,
-    fontStyle: "italic",
-  },
-  list: { marginTop: 28, gap: 8 },
-  row: {
-    backgroundColor: colors.card,
+  detailText: { fontSize: 14, lineHeight: 21, color: colors.versoText },
+  detailEmpty: { color: colors.muted, fontStyle: "italic" },
+  aside: {
+    marginTop: 18,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent,
     borderRadius: colors.radius,
-    padding: 14,
-    gap: 10,
+    backgroundColor: colors.card,
+    padding: 12,
+    gap: 6,
   },
-  rowLeft: { gap: 6 },
-  rowTitle: {
-    fontWeight: "700",
-    color: colors.ink,
-    fontSize: 16,
-    fontFamily: "serif",
+  asideHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 4, alignItems: "center" },
-  rowStars: {
-    fontSize: 12,
-    letterSpacing: 1,
-    color: colors.accent,
-    fontWeight: "700",
-    marginRight: 2,
+  asideTitle: { fontWeight: "700", color: colors.ink, fontSize: 14 },
+  asideRefresh: { color: colors.accent, fontWeight: "700", fontSize: 12 },
+  asideHint: { color: colors.muted, fontSize: 11, marginBottom: 4 },
+  asideRow: {
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    gap: 4,
   },
-  tag: {
-    fontSize: 11,
-    fontWeight: "600",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 2,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-  },
-  rowVerso: { color: "#4b5563", lineHeight: 20, fontSize: 14 },
+  asideRowText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  asideMeta: { color: colors.muted, fontSize: 12, lineHeight: 17 },
+  asideMetaLabel: { color: colors.ink, fontWeight: "700" },
   empty: {
     marginTop: 40,
     textAlign: "center",

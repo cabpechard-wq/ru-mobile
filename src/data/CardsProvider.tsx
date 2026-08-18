@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useMemo } from "react";
+import demoJson from "../../assets/demo/flipcards-cards.json";
 import { DEMO_CARDS_ENDPOINT, MEMBER_CARDS_ENDPOINT } from "./config";
-import { type FlipcardsData, type NormalizedCardsData, normalizeCardsData } from "./cards";
+import {
+  type FlipcardsData,
+  type NormalizedCardsData,
+  normalizeCardsData,
+} from "./cards";
 import { useAuthAwareJson } from "./useAuthAwareJson";
 
 type CardsState =
@@ -15,7 +20,9 @@ const CardsContext = createContext<CardsContextValue | null>(null);
 export function CardsProvider({ children }: { children: React.ReactNode }) {
   const remote = useAuthAwareJson<FlipcardsData>(
     DEMO_CARDS_ENDPOINT,
-    MEMBER_CARDS_ENDPOINT
+    MEMBER_CARDS_ENDPOINT,
+    true,
+    demoJson as FlipcardsData,
   );
 
   const value = useMemo<CardsContextValue>(() => {

@@ -1,14 +1,31 @@
 import { useRouter } from "expo-router";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useCardsData } from "../data/CardsProvider";
 import { useChronologieData } from "../data/ChronologieProvider";
+import { nameInSet, nameKeySet } from "../data/coursThemes";
 import { useDictionnaireData } from "../data/DictionnaireProvider";
+import { useEnchainementsData } from "../data/EnchainementsProvider";
+import { useEnchainementsSession } from "../data/EnchainementsSessionContext";
+import { pickRandomChain, shuffledOrder } from "../data/enchainements";
+import { useFlipcardsDicoData } from "../data/FlipcardsDicoProvider";
 import { useManuelData } from "../data/ManuelProvider";
 import { breadcrumb, refForChapterId } from "../data/manuel";
+import { neighborsForChapter } from "../data/manuelNav";
+import { useRelierDicoData } from "../data/RelierDicoProvider";
+import { useRelierData } from "../data/RelierProvider";
+import { useRelierSession } from "../data/RelierSessionContext";
+import { TRAIL } from "../data/sections";
 import { useStudySession } from "../data/StudyContext";
 import { colors } from "../theme/colors";
 import { ErrorScreen, LoadingScreen } from "./DataStatus";
+import { PageHeader } from "./PageHeader";
 import { Prose, type ProseLinkHandler } from "./Prose";
 
 function shuffle<T>(arr: T[]): T[] {
@@ -24,12 +41,33 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
   const router = useRouter();
   const manuel = useManuelData();
   const cardsState = useCardsData();
+  const flipDico = useFlipcardsDicoData();
   const { setSession } = useStudySession();
+  const relierState = useRelierData();
+  const relierDico = useRelierDicoData();
+  const { setSession: setRelierSession } = useRelierSession();
+  const enchainementsState = useEnchainementsData();
+  const { setSession: setEnchainementsSession } = useEnchainementsSession();
 
   const exercises =
     manuel.status === "ready" ? manuel.exercises[chapterRef] : undefined;
   const jurisprudence = exercises?.jurisprudence ?? [];
-  if (!jurisprudence.length) return null;
+  const notions = exercises?.notions ?? [];
+  if (!jurisprudence.length && !notions.length) return null;
+
+  const notionKeys = nameKeySet(notions);
+  const notionCards =
+    flipDico.status === "ready"
+      ? flipDico.data.allCards.filter(
+          (c) => nameInSet(c.recto, notionKeys) || nameInSet(c.id, notionKeys)
+        )
+      : [];
+  const notionRelier =
+    relierDico.status === "ready"
+      ? relierDico.data.allItems.filter(
+          (i) => nameInSet(i.recto, notionKeys) || nameInSet(i.id, notionKeys)
+        )
+      : [];
 
   const startFlipcards = () => {
     if (cardsState.status !== "ready") return;
@@ -42,35 +80,132 @@ function ChapterExercises({ chapterRef, title }: { chapterRef: string; title: st
     router.push("/study");
   };
 
+  const startRelier = () => {
+    if (relierState.status !== "ready") return;
+    const names = new Set(jurisprudence);
+    const items = shuffle(
+      relierState.data.allItems.filter((i) => names.has(i.recto))
+    );
+    if (items.length < 2) return;
+    setRelierSession({ items, pack: "arrets", pool: items, batchSize: items.length });
+    router.push("/relier/session");
+  };
+
+  const startEnchainements = () => {
+    if (enchainementsState.status !== "ready") return;
+    const decisions = enchainementsState.decisions.filter((d) =>
+      jurisprudence.includes(d.nom)
+    );
+    const chain = pickRandomChain(decisions);
+    if (!chain) {
+      router.push({ pathname: "/enchainements", params: { cours: chapterRef } });
+      return;
+    }
+    setEnchainementsSession({ items: shuffledOrder(chain) });
+    router.push("/enchainements/session");
+  };
+
+  const startFlipcardsNotions = () => {
+    const cards = shuffle(notionCards);
+    if (!cards.length) return;
+    setSession({
+      cards,
+      hint: `${title} · ${cards.length} carte(s)`,
+      selectedIds: cards.map((c) => c.id || c.recto),
+      pack: "notions",
+    });
+    router.push("/study");
+  };
+
+  const startRelierNotions = () => {
+    const items = shuffle(notionRelier);
+    if (items.length < 2) return;
+    setRelierSession({
+      items,
+      pack: "notions",
+      pool: items,
+      batchSize: items.length,
+    });
+    router.push("/relier/session");
+  };
+
   return (
     <View style={styles.exercises} accessibilityLabel="Exercices liés à ce chapitre">
-      <Text style={styles.exercisesTitle}>
-        Apprendre la jurisprudence de ce cours{" "}
-        <Text style={styles.exercisesCount}>({jurisprudence.length})</Text>
-      </Text>
-      <View style={styles.exercisesActions}>
-        <Pressable
-          style={styles.exerciseBtn}
-          disabled={cardsState.status !== "ready"}
-          onPress={startFlipcards}
-        >
-          <Text style={styles.exerciseBtnText}>Flipcards</Text>
-        </Pressable>
-        <Pressable
-          style={styles.exerciseBtn}
-          onPress={() => router.push({ pathname: "/relier", params: { cours: chapterRef } })}
-        >
-          <Text style={styles.exerciseBtnText}>Relier</Text>
-        </Pressable>
-        <Pressable
-          style={styles.exerciseBtn}
-          onPress={() =>
-            router.push({ pathname: "/enchainements", params: { cours: chapterRef } })
-          }
-        >
-          <Text style={styles.exerciseBtnText}>Enchaînements logiques</Text>
-        </Pressable>
-      </View>
+      {jurisprudence.length ? (
+        <>
+          <Text style={styles.exercisesTitle}>
+            Apprendre la jurisprudence de ce cours{" "}
+            <Text style={styles.exercisesCount}>({jurisprudence.length})</Text>
+          </Text>
+          <View style={styles.exercisesActions}>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={cardsState.status !== "ready"}
+              onPress={startFlipcards}
+            >
+              <Text style={styles.exerciseBtnText}>Flipcards</Text>
+            </Pressable>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={relierState.status !== "ready"}
+              onPress={startRelier}
+            >
+              <Text style={styles.exerciseBtnText}>Relier</Text>
+            </Pressable>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={enchainementsState.status !== "ready"}
+              onPress={startEnchainements}
+            >
+              <Text style={styles.exerciseBtnText}>Enchaînements logiques</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
+
+      {notions.length ? (
+        <>
+          <Text
+            style={[
+              styles.exercisesTitle,
+              jurisprudence.length ? styles.notionsTitle : null,
+            ]}
+          >
+            Apprendre les notions de ce cours{" "}
+            <Text style={styles.exercisesCount}>({notions.length})</Text>
+          </Text>
+          <View style={styles.exercisesActions}>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={!notionCards.length}
+              onPress={startFlipcardsNotions}
+            >
+              <Text
+                style={[
+                  styles.exerciseBtnText,
+                  !notionCards.length && styles.exerciseBtnTextDisabled,
+                ]}
+              >
+                Flipcards
+              </Text>
+            </Pressable>
+            <Pressable
+              style={styles.exerciseBtn}
+              disabled={notionRelier.length < 2}
+              onPress={startRelierNotions}
+            >
+              <Text
+                style={[
+                  styles.exerciseBtnText,
+                  notionRelier.length < 2 && styles.exerciseBtnTextDisabled,
+                ]}
+              >
+                Relier
+              </Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
@@ -96,13 +231,21 @@ export function ManuelChapterView({
   const chapter = resolvedId ? state.chapters.get(resolvedId) : undefined;
   if (!chapter) {
     return (
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.empty}>Chapitre introuvable.</Text>
-      </ScrollView>
+      <View style={styles.wrap}>
+        <PageHeader trail={[...TRAIL.manuel]} />
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <Text style={styles.empty}>Chapitre introuvable.</Text>
+        </ScrollView>
+      </View>
     );
   }
 
   const trail = breadcrumb(state.chapters, chapter.id);
+  const { prev, next } = neighborsForChapter(
+    state.chapters,
+    state.rootIds,
+    chapter.id
+  );
 
   const onLink: ProseLinkHandler = (run) => {
     if (run.kind === "dict" && run.target) {
@@ -112,9 +255,11 @@ export function ManuelChapterView({
       return;
     }
     if (run.kind === "arret" && run.target) {
-      const known = chrono.status === "ready" && chrono.decisions.some((d) => d.id === run.target);
+      const known =
+        chrono.status === "ready" &&
+        chrono.decisions.some((d) => d.id === run.target);
       if (known || chrono.status === "idle-full") {
-        router.push(`/chronologie/${run.target}`);
+        router.push(`/arrets/${run.target}`);
       }
       return;
     }
@@ -123,71 +268,124 @@ export function ManuelChapterView({
     }
   };
 
+  const crumbTrail = [
+    ...TRAIL.manuel,
+    ...trail.slice(1).map((c) => c.title),
+  ];
+
   return (
-    <ScrollView contentContainerStyle={styles.scroll}>
-      <Pressable onPress={() => router.back()} style={styles.back}>
-        <Text style={styles.backText}>← {isRoot ? "Accueil" : "Retour"}</Text>
-      </Pressable>
-
-      {trail.length > 1 ? (
-        <Text style={styles.crumb} numberOfLines={1}>
-          {trail
-            .slice(0, -1)
-            .map((c) => c.title)
-            .join(" › ")}
+    <View style={styles.wrap}>
+      <PageHeader trail={crumbTrail} />
+      <View style={styles.stickyBar}>
+        <Text style={styles.stickyTitle} numberOfLines={2}>
+          {chapter.title}
         </Text>
-      ) : null}
-
-      <Text style={styles.title}>{chapter.title}</Text>
-
-      {chapter.blocks.length ? (
-        <View style={styles.prose}>
-          <Prose blocks={chapter.blocks} onLink={onLink} />
+        <View style={styles.chapNav}>
+          <Pressable
+            disabled={!prev}
+            onPress={() => prev && router.push(`/manuel/${prev.id}`)}
+            style={[styles.chapNavBtn, !prev && styles.chapNavDisabled]}
+          >
+            <Text style={styles.chapNavArrow}>‹</Text>
+            <Text style={styles.chapNavLabel} numberOfLines={1}>
+              chap. précédent
+            </Text>
+          </Pressable>
+          <Pressable
+            disabled={!next}
+            onPress={() => next && router.push(`/manuel/${next.id}`)}
+            style={[
+              styles.chapNavBtn,
+              styles.chapNavNext,
+              !next && styles.chapNavDisabled,
+            ]}
+          >
+            <Text style={styles.chapNavLabel} numberOfLines={1}>
+              chap. suivant
+            </Text>
+            <Text style={styles.chapNavArrow}>›</Text>
+          </Pressable>
         </View>
-      ) : null}
+      </View>
 
-      {(() => {
-        const ref = refForChapterId(chapter.id);
-        return ref ? <ChapterExercises chapterRef={ref} title={chapter.title} /> : null;
-      })()}
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {chapter.blocks.length ? (
+          <View style={styles.prose}>
+            <Prose blocks={chapter.blocks} onLink={onLink} collapsible />
+          </View>
+        ) : null}
 
-      {chapter.children.length ? (
-        <View style={styles.children}>
-          {!isRoot && chapter.blocks.length ? (
-            <Text style={styles.childrenTitle}>Chapitres</Text>
-          ) : null}
-          {chapter.children.map((cid) => {
-            const child = state.chapters.get(cid);
-            if (!child) return null;
-            return (
-              <Pressable
-                key={cid}
-                onPress={() => router.push(`/manuel/${cid}`)}
-                style={styles.childRow}
-              >
-                <Text style={styles.childTitle}>{child.title}</Text>
-                <Text style={styles.childChevron}>›</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
-    </ScrollView>
+        {(() => {
+          const ref = refForChapterId(chapter.id);
+          return ref ? <ChapterExercises chapterRef={ref} title={chapter.title} /> : null;
+        })()}
+
+        {chapter.children.length ? (
+          <View style={styles.children}>
+            {!isRoot && chapter.blocks.length ? (
+              <Text style={styles.childrenTitle}>Chapitres</Text>
+            ) : null}
+            {chapter.children.map((cid) => {
+              const child = state.chapters.get(cid);
+              if (!child) return null;
+              return (
+                <Pressable
+                  key={cid}
+                  onPress={() => router.push(`/manuel/${cid}`)}
+                  style={styles.childRow}
+                >
+                  <Text style={styles.childTitle}>{child.title}</Text>
+                  <Text style={styles.childChevron}>›</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 48 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
-  crumb: { color: colors.muted, fontSize: 12, marginBottom: 4 },
-  title: {
-    fontSize: 22,
+  wrap: { flex: 1 },
+  stickyBar: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.bg,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    gap: 6,
+  },
+  stickyTitle: {
+    fontFamily: "serif",
+    fontSize: 18,
     fontWeight: "700",
     color: colors.title,
-    fontFamily: "serif",
-    marginBottom: 8,
   },
+  chapNav: { flexDirection: "row", gap: 8, marginTop: 2 },
+  chapNavBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: colors.radius,
+    backgroundColor: colors.card,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  chapNavNext: { justifyContent: "flex-end" },
+  chapNavDisabled: { opacity: 0.35 },
+  chapNavArrow: { color: colors.accent, fontWeight: "700", fontSize: 18 },
+  chapNavLabel: {
+    color: colors.ink,
+    fontWeight: "600",
+    fontSize: 12,
+    flexShrink: 1,
+  },
+  scroll: { padding: 16, paddingBottom: 48 },
   prose: { marginTop: 4 },
   children: { marginTop: 16, gap: 8 },
   childrenTitle: {
@@ -209,7 +407,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
-  childTitle: { color: colors.ink, fontWeight: "600", fontSize: 14, flexShrink: 1 },
+  childTitle: {
+    color: colors.ink,
+    fontWeight: "600",
+    fontSize: 14,
+    flexShrink: 1,
+  },
   childChevron: { color: colors.muted, fontSize: 16 },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
   exercises: {
@@ -220,6 +423,7 @@ const styles = StyleSheet.create({
   },
   exercisesTitle: { color: colors.ink, fontWeight: "700", fontSize: 14 },
   exercisesCount: { color: colors.muted, fontWeight: "600" },
+  notionsTitle: { marginTop: 16 },
   exercisesActions: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -235,4 +439,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   exerciseBtnText: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  exerciseBtnTextDisabled: {
+    color: colors.muted,
+    opacity: 0.5,
+  },
 });

@@ -1,5 +1,5 @@
 /**
- * Base du site publié (même source que le web — voir ARCHITECTURE mobile).
+ * Base du site publié (même source que le web).
  * Jeu de démo public, non authentifié.
  */
 export const SITE_BASE_URL = "https://www.ressources-universitaires.fr";
@@ -16,13 +16,17 @@ export const DEMO_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/demo-enchainements-
 export const MEMBER_ENCHAINEMENTS_ENDPOINT = `${SITE_BASE_URL}/enchainements-logiques/data/chronology-decisions.json`;
 
 /**
- * Chronologie (registre Cours, pas Exercices) : même jeu de démo que les
- * Enchaînements (identique en contenu), fonds complet à l'emplacement
- * canonique /chronologie/ (995 décisions, ~3,3 Mo — chargement explicite
- * côté app, pas automatique).
+ * Chronologie / Fiches d'arrêts : même fonds de décisions.
+ * Démo auto ; fonds complet (~3 Mo) sur action explicite.
  */
 export const DEMO_CHRONOLOGIE_ENDPOINT = DEMO_ENCHAINEMENTS_ENDPOINT;
 export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chronology-decisions.json`;
+/**
+ * Index slug → Considérant, extrait des fiches HTML. Best-effort : l'app
+ * embarque le même fichier (`assets/considerants.json`) si le réseau échoue
+ * ou si le générateur privé n'a pas encore publié l'URL.
+ */
+export const CONSIDERANTS_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/considerants.json`;
 
 /**
  * Dictionnaire : contenu public sur le site (pas de pack Worker, pas
@@ -31,9 +35,7 @@ export const FULL_CHRONOLOGIE_ENDPOINT = `${SITE_BASE_URL}/chronologie/data/chro
 export const DICTIONNAIRE_ENDPOINT = `${SITE_BASE_URL}/dictionnaire/entries.json`;
 
 /**
- * Manuel (Cours) : contenu public, comme le Dictionnaire — un seul
- * endpoint, chargé entièrement (1,5 Mo, léger comparé aux 3 Mo de la
- * Chronologie complète, pas de bouton de chargement explicite).
+ * Manuel (Cours) : contenu public, comme le Dictionnaire.
  */
 export const MANUEL_ENDPOINT = `${SITE_BASE_URL}/manuel/chapters.json`;
 
@@ -47,10 +49,23 @@ export const MANUEL_EXERCISES_ENDPOINT = `${SITE_BASE_URL}/manuel/exercices.json
 
 /**
  * Worker d'auth — même compte que le site web (SSO). Endpoint JSON dédié
- * mobile (`?format=json`), même session/entitlement que le web.
+ * mobile (`?format=json` si le Worker le gère ; sinon HTML `const DATA`).
  */
 export const AUTH_API_BASE_URL = "https://flipcards-auth.cab-pechard.workers.dev";
 export const MEMBER_CARDS_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/flipcards?format=json`;
 export const MEMBER_RELIER_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/relier?format=json`;
+export const MEMBER_FLIPCARDS_DICO_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/flipcards-dico?format=json`;
+export const MEMBER_RELIER_DICO_ENDPOINT = `${AUTH_API_BASE_URL}/api/content/relier-dico?format=json`;
+
+/**
+ * Démos Grandes notions : pas encore de cards.json sur ru-public (données
+ * encore embarquées dans le HTML du site). Les providers chargent donc un
+ * JSON extrait dans assets/demo/ en mode anonyme, et le Worker une fois
+ * connecté.
+ */
 
 export const PAGE_TITLE = "Grands arrêts du droit public et administratif";
+export const PAGE_TITLE_NOTIONS = "Grandes notions du droit public et administratif";
+
+/** Nombre de suggestions « au hasard » sous la carte Flipcards. */
+export const ASIDE_RANDOM_COUNT = 3;

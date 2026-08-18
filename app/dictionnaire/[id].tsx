@@ -1,15 +1,33 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React from "react";
+import React, { useMemo } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageHeader } from "../../src/components/PageHeader";
+import { useChronologieData } from "../../src/data/ChronologieProvider";
 import { useDictionnaireData } from "../../src/data/DictionnaireProvider";
-import { splitCoursLinks } from "../../src/data/dictionnaire";
+import { useManuelData } from "../../src/data/ManuelProvider";
+import {
+  chapterIdFromManuelPath,
+  splitCoursLinks,
+} from "../../src/data/dictionnaire";
+import { TRAIL } from "../../src/data/sections";
 import { colors } from "../../src/theme/colors";
 
 export default function DictionnaireEntryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useDictionnaireData();
+  const chrono = useChronologieData();
+  const manuel = useManuelData();
+
+  const knownDecisionIds = useMemo(
+    () => (chrono.status === "ready" ? new Set(chrono.decisions.map((d) => d.id)) : null),
+    [chrono]
+  );
+  const knownChapterIds = useMemo(
+    () => (manuel.status === "ready" ? new Set(manuel.chapters.keys()) : null),
+    [manuel]
+  );
 
   const entry =
     state.status === "ready" ? state.entries.find((e) => e.id === id) : undefined;
@@ -17,9 +35,7 @@ export default function DictionnaireEntryScreen() {
   if (state.status !== "ready" || !entry) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Pressable onPress={() => router.back()} style={{ padding: 16 }}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
+        <PageHeader trail={[...TRAIL.dictionnaire]} />
         <Text style={styles.empty}>
           {state.status === "loading" ? "Chargement…" : "Terme introuvable."}
         </Text>
@@ -31,19 +47,33 @@ export default function DictionnaireEntryScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[...TRAIL.dictionnaire, entry.term]} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
         <Text style={styles.term}>{entry.term}</Text>
         <Text style={styles.def}>{entry.definition}</Text>
 
         {chapitres.length ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Cours</Text>
-            <Text style={styles.sectionText}>
-              {chapitres.map((c) => c.label).join(" · ")}
-            </Text>
+            {chapitres.map((c) => {
+              const chapterId = chapterIdFromManuelPath(c.path);
+              const tappable =
+                !!chapterId && !!knownChapterIds?.has(chapterId);
+              return (
+                <Pressable
+                  key={c.path}
+                  disabled={!tappable}
+                  onPress={() => tappable && router.push(`/manuel/${chapterId}`)}
+                  style={[styles.linkRow, !tappable && styles.linkRowDisabled]}
+                >
+                  <Text
+                    style={tappable ? styles.chapterLink : styles.chapterLinkMuted}
+                  >
+                    {c.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
 
@@ -52,13 +82,17 @@ export default function DictionnaireEntryScreen() {
             <Text style={styles.sectionTitle}>Jurisprudence</Text>
             {arrets.map((a) => {
               const slug = a.path.match(/\/arrets\/([^/]+)\/?$/)?.[1];
+              const tappable = !!slug && !!knownDecisionIds?.has(slug);
               return (
                 <Pressable
                   key={a.path}
-                  onPress={() => slug && router.push(`/chronologie/${slug}`)}
-                  style={styles.arretRow}
+                  disabled={!tappable}
+                  onPress={() => tappable && router.push(`/chronologie/${slug}`)}
+                  style={[styles.linkRow, !tappable && styles.linkRowDisabled]}
                 >
-                  <Text style={styles.arretLink}>{a.label}</Text>
+                  <Text style={tappable ? styles.arretLink : styles.arretLinkMuted}>
+                    {a.label}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -72,8 +106,6 @@ export default function DictionnaireEntryScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 48 },
-  back: { paddingBottom: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   term: {
     fontSize: 22,
     fontWeight: "700",
@@ -91,8 +123,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginBottom: 6,
   },
-  sectionText: { fontSize: 13, color: colors.muted },
-  arretRow: {
+  linkRow: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: colors.radius,
@@ -100,6 +131,10 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 6,
   },
+  linkRowDisabled: { opacity: 0.55 },
+  chapterLink: { color: colors.brass, fontWeight: "700", fontSize: 13 },
+  chapterLinkMuted: { color: colors.muted, fontWeight: "600", fontSize: 13 },
   arretLink: { color: colors.accent, fontWeight: "700", fontSize: 13 },
+  arretLinkMuted: { color: colors.muted, fontWeight: "600", fontSize: 13 },
   empty: { textAlign: "center", marginTop: 40, color: colors.muted },
 });

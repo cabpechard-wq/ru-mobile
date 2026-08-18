@@ -9,7 +9,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageHeader } from "../src/components/PageHeader";
 import { useAuth } from "../src/data/AuthContext";
+import { TRAIL } from "../src/data/sections";
 import { colors } from "../src/theme/colors";
 
 export default function LoginScreen() {
@@ -35,11 +37,8 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
+      <PageHeader trail={[...TRAIL.login]} />
       <View style={styles.wrap}>
-        <Pressable onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>← Retour</Text>
-        </Pressable>
-
         <Text style={styles.title}>Connexion</Text>
         <Text style={styles.sub}>
           Même compte que sur le site — accédez à l'intégralité des fiches.
@@ -96,8 +95,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   wrap: { padding: 20, gap: 4, maxWidth: 420, width: "100%", alignSelf: "center" },
-  back: { paddingVertical: 12 },
-  backText: { color: colors.accent, fontWeight: "600" },
   title: {
     fontSize: 24,
     fontWeight: "700",

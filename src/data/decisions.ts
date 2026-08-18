@@ -15,7 +15,12 @@ export type Decision = {
   enjeu?: string;
   solution?: string;
   perspective?: string;
-  slugFiche?: string | null;
+  /** Considérant de principe — absent du JSON Chronologie historique ; hydraté à l'app. */
+  considerant?: string;
+  /** Cote / référence (filtre unifié Grandes décisions, site PR #12). */
+  reference?: string;
+  /** Slug de fiche d’arrêt (lien Chronologie / filtres Référence). */
+  slugFiche?: string;
   urlOfficielle?: string | null;
   liees?: string[];
   complete?: boolean;

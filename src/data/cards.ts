@@ -1,3 +1,5 @@
+import { sortFr } from "./sortFr";
+
 export type Card = {
   id: string;
   recto: string;
@@ -106,8 +108,14 @@ export function normalizeCardsData(raw: FlipcardsData): NormalizedCardsData {
   const allCards: Card[] = (raw.cards || [])
     .filter((c) => !!c.recto)
     .map(normalizeCard);
-  const allThemes = raw.classifiers?.themes || [];
-  const allNotions = raw.classifiers?.notions || [];
+  const allThemes =
+    raw.classifiers?.themes?.length
+      ? raw.classifiers.themes
+      : [...new Set(allCards.flatMap((c) => c.themes || []))].sort(sortFr);
+  const allNotions =
+    raw.classifiers?.notions?.length
+      ? raw.classifiers.notions
+      : [...new Set(allCards.flatMap((c) => c.notions || []))].sort(sortFr);
   const presentImportanceLevels = IMPORTANCE_LEVELS.filter((lvl) =>
     allCards.some((c) => cardImportanceLevel(c) === lvl)
   );
