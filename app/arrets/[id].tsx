@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +11,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ErrorScreen } from "../../src/components/DataStatus";
+import { GuestPreview } from "../../src/components/GuestPreview";
 import { PageHeader } from "../../src/components/PageHeader";
+import { useAuth } from "../../src/data/AuthContext";
 import { useCardsData } from "../../src/data/CardsProvider";
 import {
   buildById,
@@ -33,6 +35,7 @@ import {
   type Decision,
 } from "../../src/data/decisions";
 import { TRAIL } from "../../src/data/sections";
+import { TTS_PREVIEW_MS } from "../../src/data/config";
 import { colors } from "../../src/theme/colors";
 
 function ficheHref(d: Decision): string {
@@ -103,6 +106,7 @@ function findDecision(decisions: Decision[], id: string): Decision | undefined {
 
 export default function ArretFicheScreen() {
   const router = useRouter();
+  const auth = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const state = useChronologieData();
   const cards = useCardsData();
@@ -131,9 +135,11 @@ export default function ArretFicheScreen() {
   const [fromSite, setFromSite] = useState<string | undefined>();
   const [siteLoading, setSiteLoading] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
+      if (previewTimer.current) clearTimeout(previewTimer.current);
       Speech.stop();
     };
   }, []);
@@ -200,22 +206,6 @@ export default function ArretFicheScreen() {
       </SafeAreaView>
     );
   }
-  if (state.status === "idle-full") {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <PageHeader trail={[...TRAIL.arrets]} />
-        <View style={styles.center}>
-          <Text style={styles.centerTitle}>Fonds non chargé</Text>
-          <Text style={styles.centerText}>
-            Cette fiche fait partie du fonds complet (~3 Mo).
-          </Text>
-          <Pressable style={styles.btn} onPress={state.loadFull}>
-            <Text style={styles.btnText}>Charger le fonds complet</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
   if (!decision) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -235,6 +225,7 @@ export default function ArretFicheScreen() {
 
   const showLineage = lineageNodes.length > 1;
 
+  const isMember = auth.status === "authenticated";
   const listenText = [
     decision.nom,
     decision.objet,
@@ -247,18 +238,32 @@ export default function ArretFicheScreen() {
 
   const toggleListen = () => {
     if (speaking) {
+      if (previewTimer.current) {
+        clearTimeout(previewTimer.current);
+        previewTimer.current = null;
+      }
       Speech.stop();
       setSpeaking(false);
       return;
     }
     if (!listenText) return;
+    const spoken = isMember
+      ? listenText
+      : listenText.slice(0, Math.max(1, Math.ceil(TTS_PREVIEW_MS / 55)));
     setSpeaking(true);
-    Speech.speak(listenText, {
+    Speech.speak(spoken, {
       language: "fr-FR",
       onDone: () => setSpeaking(false),
       onStopped: () => setSpeaking(false),
       onError: () => setSpeaking(false),
     });
+    if (!isMember) {
+      previewTimer.current = setTimeout(() => {
+        Speech.stop();
+        setSpeaking(false);
+        previewTimer.current = null;
+      }, TTS_PREVIEW_MS);
+    }
   };
 
   return (
@@ -288,7 +293,11 @@ export default function ArretFicheScreen() {
             disabled={!listenText}
           >
             <Text style={[styles.listenText, !listenText && styles.listenDisabled]}>
-              {speaking ? "Arrêter" : "Écouter"}
+              {speaking
+                ? "Arrêter"
+                : isMember
+                  ? "Écouter"
+                  : "Écouter (aperçu 30 s)"}
             </Text>
           </Pressable>
           <Pressable
@@ -305,21 +314,23 @@ export default function ArretFicheScreen() {
           </Pressable>
         </View>
 
-        <HighlightSection title="Objet" text={decision.objet} />
-        <HighlightSection title="Portée" text={decision.portee} />
-        <HighlightSection
-          title="Considérant de principe"
-          text={considerant}
-          tone="accent"
-          loading={considerantLoading}
-        />
+        <GuestPreview>
+          <HighlightSection title="Objet" text={decision.objet} />
+          <HighlightSection title="Portée" text={decision.portee} />
+          <HighlightSection
+            title="Considérant de principe"
+            text={considerant}
+            tone="accent"
+            loading={considerantLoading}
+          />
 
-        <View style={styles.bodyBlock}>
-          <BodySection title="Faits" text={decision.faits} />
-          <BodySection title="Enjeu juridique" text={decision.enjeu} />
-          <BodySection title="Solution" text={decision.solution} />
-          <BodySection title="Perspective" text={decision.perspective} />
-        </View>
+          <View style={styles.bodyBlock}>
+            <BodySection title="Faits" text={decision.faits} />
+            <BodySection title="Enjeu juridique" text={decision.enjeu} />
+            <BodySection title="Solution" text={decision.solution} />
+            <BodySection title="Perspective" text={decision.perspective} />
+          </View>
+        </GuestPreview>
 
         {related.length ? (
           <View style={styles.related}>

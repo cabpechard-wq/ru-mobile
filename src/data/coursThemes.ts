@@ -1,4 +1,4 @@
-import { splitCoursLinks, type DictEntry } from "./dictionnaire";
+import { isCoursChapterPath, splitCoursLinks, type DictEntry } from "./dictionnaire";
 import { sortFr } from "./sortFr";
 
 /** Aligné sur `dico-cours-themes.js` du site. */
@@ -57,7 +57,7 @@ export function buildCoursIndex(entries: DictEntry[]): {
   entries.forEach((entry) => {
     const labels: string[] = [];
     (entry.cours || []).forEach((c) => {
-      if (!String(c.path || "").includes("/manuel/")) return;
+      if (!isCoursChapterPath(c.path)) return;
       const label = String(c.label || "").trim();
       if (!label) return;
       labels.push(label);

@@ -21,10 +21,12 @@ import { neighborsForChapter } from "../data/manuelNav";
 import { useRelierDicoData } from "../data/RelierDicoProvider";
 import { useRelierData } from "../data/RelierProvider";
 import { useRelierSession } from "../data/RelierSessionContext";
+import { useAuth } from "../data/AuthContext";
 import { TRAIL } from "../data/sections";
 import { useStudySession } from "../data/StudyContext";
 import { colors } from "../theme/colors";
 import { ErrorScreen, LoadingScreen } from "./DataStatus";
+import { GuestPreview } from "./GuestPreview";
 import { PageHeader } from "./PageHeader";
 import { Prose, type ProseLinkHandler } from "./Prose";
 
@@ -218,6 +220,7 @@ export function ManuelChapterView({
   isRoot?: boolean;
 }) {
   const router = useRouter();
+  const auth = useAuth();
   const state = useManuelData();
   const dico = useDictionnaireData();
   const chrono = useChronologieData();
@@ -258,7 +261,7 @@ export function ManuelChapterView({
       const known =
         chrono.status === "ready" &&
         chrono.decisions.some((d) => d.id === run.target);
-      if (known || chrono.status === "idle-full") {
+      if (known) {
         router.push(`/arrets/${run.target}`);
       }
       return;
@@ -310,9 +313,15 @@ export function ManuelChapterView({
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {chapter.blocks.length ? (
-          <View style={styles.prose}>
-            <Prose blocks={chapter.blocks} onLink={onLink} collapsible />
-          </View>
+          <GuestPreview>
+            <View style={styles.prose}>
+              <Prose
+                blocks={chapter.blocks}
+                onLink={onLink}
+                collapsible={auth.status === "authenticated"}
+              />
+            </View>
+          </GuestPreview>
         ) : null}
 
         {(() => {
