@@ -10,6 +10,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PageHeader } from "../src/components/PageHeader";
+import {
+  openForgotPassword,
+  openInscriptions,
+} from "../src/components/GuestPreview";
 import { useAuth } from "../src/data/AuthContext";
 import { TRAIL } from "../src/data/sections";
 import { colors } from "../src/theme/colors";
@@ -87,6 +91,25 @@ export default function LoginScreen() {
             <Text style={styles.btnText}>Se connecter</Text>
           )}
         </Pressable>
+
+        <View style={styles.links}>
+          <Pressable
+            testID="forgot-password-link"
+            onPress={openForgotPassword}
+            accessibilityRole="link"
+            accessibilityLabel="Mot de passe oublié"
+          >
+            <Text style={styles.link}>Mot de passe oublié</Text>
+          </Pressable>
+          <Pressable
+            testID="signup-from-login"
+            onPress={openInscriptions}
+            accessibilityRole="link"
+            accessibilityLabel="S’inscrire"
+          >
+            <Text style={styles.link}>S’inscrire</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -134,4 +157,11 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.4 },
   btnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  links: {
+    marginTop: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  link: { color: colors.accent, fontSize: 13, fontWeight: "700" },
 });

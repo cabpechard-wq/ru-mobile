@@ -4,6 +4,8 @@
  */
 export const SITE_BASE_URL = "https://www.ressources-universitaires.fr";
 export const CHECKOUT_URL = `${SITE_BASE_URL}/checkout/`;
+export const FORGOT_PASSWORD_URL = `${SITE_BASE_URL}/membre/forgot/`;
+export const ACCOUNT_URL = `${SITE_BASE_URL}/membre/compte/`;
 
 export const DEMO_CARDS_ENDPOINT = `${SITE_BASE_URL}/demo/cards.json`;
 export const DEMO_RELIER_ENDPOINT = `${SITE_BASE_URL}/demo-relier/cards.json`;
