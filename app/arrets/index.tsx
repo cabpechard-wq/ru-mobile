@@ -79,17 +79,6 @@ export default function ArretsListScreen() {
       {state.status === "error" ? (
         <ErrorScreen message={state.message} onRetry={state.reload} />
       ) : null}
-      {state.status === "idle-full" ? (
-        <View style={styles.center}>
-          <Text style={styles.centerTitle}>Fiches d'arrêts</Text>
-          <Text style={styles.centerText}>
-            Fonds complet : 995 décisions (~3 Mo).
-          </Text>
-          <Pressable testID="load-full" style={styles.btn} onPress={state.loadFull}>
-            <Text style={styles.btnText}>Charger le fonds complet</Text>
-          </Pressable>
-        </View>
-      ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Fiches d'arrêts</Text>

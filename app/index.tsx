@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../src/data/AuthContext";
+import { openInscriptions } from "../src/components/GuestPreview";
 import { colors } from "../src/theme/colors";
 
 type Entry = { label: string; href: string };
@@ -96,9 +97,14 @@ function AccountBar() {
   return (
     <View style={styles.accountBar}>
       <Text style={styles.accountText}>Mode démo</Text>
-      <Pressable testID="login-link" onPress={() => router.push("/login")}>
-        <Text style={styles.accountAction}>Espace pédagogique</Text>
-      </Pressable>
+      <View style={styles.accountActions}>
+        <Pressable testID="signup-link" onPress={openInscriptions}>
+          <Text style={styles.accountAction}>S’inscrire</Text>
+        </Pressable>
+        <Pressable testID="login-link" onPress={() => router.push("/login")}>
+          <Text style={styles.accountAction}>Connexion</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -154,7 +160,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 4,
   },
-  accountText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
+  accountText: { color: colors.muted, fontSize: 12, fontWeight: "600", flex: 1, paddingRight: 8 },
+  accountActions: { flexDirection: "row", alignItems: "center", gap: 14 },
   accountAction: { color: colors.accent, fontSize: 12, fontWeight: "700" },
   scroll: { padding: 16, paddingBottom: 48 },
   brandPrimary: {

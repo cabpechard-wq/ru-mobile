@@ -171,18 +171,6 @@ export default function ChronologieListScreen() {
       {state.status === "error" ? (
         <ErrorScreen message={state.message} onRetry={state.reload} />
       ) : null}
-      {state.status === "idle-full" ? (
-        <View style={styles.center}>
-          <Text style={styles.centerTitle}>Chronologie</Text>
-          <Text style={styles.centerText}>
-            Fonds complet : décisions liées entre elles (~3 Mo). Chargement
-            explicite.
-          </Text>
-          <Pressable testID="load-full" style={styles.btn} onPress={state.loadFull}>
-            <Text style={styles.btnText}>Charger le fonds complet</Text>
-          </Pressable>
-        </View>
-      ) : null}
       {state.status === "ready" ? (
         <ScrollView contentContainerStyle={styles.scroll}>
           <Text style={styles.title}>Chronologie</Text>

@@ -22,7 +22,6 @@ import type { Card } from "./cards";
 type ChronologieState =
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "idle-full" } // connecté, fonds complet pas encore chargé (poids)
   | { status: "ready"; decisions: Decision[]; source: "demo" | "full" };
 
 type ChronologieContextValue = ChronologieState & {
@@ -121,11 +120,11 @@ export function ChronologieProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (auth.status === "checking") return;
     if (auth.status === "authenticated") {
-      setState({ status: "idle-full" });
+      loadFull();
     } else {
       loadDemo();
     }
-  }, [auth.status, loadDemo]);
+  }, [auth.status, loadDemo, loadFull]);
 
   useEffect(() => {
     if (!rawRef.current.length) return;
