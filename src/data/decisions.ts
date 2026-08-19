@@ -35,20 +35,52 @@ export function buildById(decisions: Decision[]): Map<string, Decision> {
   return new Map(decisions.map((d) => [d.id, d]));
 }
 
+const neighborIndexByMap = new WeakMap<
+  Map<string, Decision>,
+  Map<string, Set<string>>
+>();
+
+/** Index bidirectionnel des `liees` — O(arêtes) une fois par fonds. */
+export function buildNeighborSets(
+  decisions: Iterable<Decision>,
+): Map<string, Set<string>> {
+  const sets = new Map<string, Set<string>>();
+  const bump = (a: string, b: string) => {
+    if (!a || !b || a === b) return;
+    let sa = sets.get(a);
+    if (!sa) {
+      sa = new Set();
+      sets.set(a, sa);
+    }
+    sa.add(b);
+    let sb = sets.get(b);
+    if (!sb) {
+      sb = new Set();
+      sets.set(b, sb);
+    }
+    sb.add(a);
+  };
+  for (const d of decisions) {
+    if (!sets.has(d.id)) sets.set(d.id, new Set());
+    for (const other of d.liees || []) bump(d.id, other);
+  }
+  return sets;
+}
+
+function neighborSetsFor(byId: Map<string, Decision>): Map<string, Set<string>> {
+  const hit = neighborIndexByMap.get(byId);
+  if (hit) return hit;
+  const built = buildNeighborSets(byId.values());
+  neighborIndexByMap.set(byId, built);
+  return built;
+}
+
 /**
  * Voisins bidirectionnels : `liees` n'est renseigné que dans un sens côté
  * Notion (A cite B), on reconstitue la relation dans les deux sens.
  */
 export function getNeighbors(byId: Map<string, Decision>, id: string): Set<string> {
-  const set = new Set<string>();
-  const sel = byId.get(id);
-  if (!sel) return set;
-  (sel.liees || []).forEach((x) => set.add(x));
-  byId.forEach((d, otherId) => {
-    if (otherId === id) return;
-    if ((d.liees || []).includes(id)) set.add(otherId);
-  });
-  return set;
+  return neighborSetsFor(byId).get(id) || new Set();
 }
 
 export function buildRelationGraph(

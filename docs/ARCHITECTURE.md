@@ -64,9 +64,12 @@ CORS : `Access-Control-Allow-Origin: *` sur les JSON et le HTML du site.
 Cache GitHub Pages : `max-age=600` (sauf chemins membres `_headers` en
 `no-store` : `/flipcards/*`, `/relier/*`, `/chronologie/*`, etc.).
 
-Il n’y a **pas de cache applicatif persistant** (pas d’AsyncStorage des
-fonds). Hors-ligne, seuls survivent : l’état React en mémoire, le token
-SSO, et éventuellement le cache HTTP du système.
+Cache applicatif (`src/data/jsonCache.ts`) : mémoire + fichiers sous
+le cache Expo, requêtes conditionnelles (ETag). Les fonds Chronologie /
+Dictionnaire / Cours s’affichent depuis le cache puis se rafraîchissent
+en arrière-plan. Enchaînements réutilise le JSON Chronologie (un seul
+téléchargement du ~3,3 Mo). Le Considérant embarqué n’attend plus l’index
+réseau. Hors-ligne après un usage : fonds + token SSO.
 
 ## Fiche d’arrêt : où vit chaque champ
 

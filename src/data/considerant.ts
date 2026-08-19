@@ -2,6 +2,7 @@ import bundledConsiderants from "../../assets/considerants.json";
 import type { Card } from "./cards";
 import { CONSIDERANTS_ENDPOINT, SITE_BASE_URL } from "./config";
 import type { Decision } from "./decisions";
+import { fetchJsonCached } from "./jsonCache";
 
 export type ConsiderantFile = {
   kind?: string;
@@ -23,21 +24,43 @@ function normLabel(s: string): string {
  * Considérant porté par les cartes Flipcards (même fonds Notion).
  * Matching large : id, slugFiche, ou nom/recto.
  */
+type CardConsiderantIndex = {
+  byId: Map<string, string>;
+  byNormRecto: Map<string, string>;
+};
+
+function buildCardConsiderantIndex(cards: Card[]): CardConsiderantIndex {
+  const byId = new Map<string, string>();
+  const byNormRecto = new Map<string, string>();
+  for (const c of cards) {
+    const text = (c.considerant || "").trim();
+    if (!text) continue;
+    if (c.id) byId.set(c.id, text);
+    const n = normLabel(c.recto);
+    if (n && !byNormRecto.has(n)) byNormRecto.set(n, text);
+  }
+  return { byId, byNormRecto };
+}
+
+function considerantFromCardIndex(
+  decision: Decision,
+  index: CardConsiderantIndex,
+): string | undefined {
+  for (const key of [decision.id, decision.slugFiche]) {
+    if (!key) continue;
+    const text = index.byId.get(key);
+    if (text) return text;
+  }
+  const nom = normLabel(decision.nom);
+  if (!nom) return undefined;
+  return index.byNormRecto.get(nom);
+}
+
 export function considerantFromCards(
   decision: Decision,
   cards: Card[],
 ): string | undefined {
-  const ids = new Set(
-    [decision.id, decision.slugFiche].filter(Boolean) as string[],
-  );
-  const nom = normLabel(decision.nom);
-  const hit = cards.find((c) => {
-    if (ids.has(c.id)) return true;
-    if (nom && normLabel(c.recto) === nom) return true;
-    return false;
-  });
-  const text = (hit?.considerant || "").trim();
-  return text || undefined;
+  return considerantFromCardIndex(decision, buildCardConsiderantIndex(cards));
 }
 
 export function bundledConsiderantIndex(): Record<string, string> {
@@ -67,6 +90,7 @@ export function applyConsiderantsToDecisions(
   cards?: Card[],
   remembered?: Record<string, string>,
 ): Decision[] {
+  const cardIndex = cards?.length ? buildCardConsiderantIndex(cards) : null;
   return decisions.map((d) => {
     const existing = (d.considerant || "").trim();
     if (existing) return d;
@@ -78,19 +102,22 @@ export function applyConsiderantsToDecisions(
     const text =
       rememberedText ||
       lookupConsiderant(d, bySlug) ||
-      (cards ? considerantFromCards(d, cards) : undefined);
+      (cardIndex ? considerantFromCardIndex(d, cardIndex) : undefined);
     if (!text) return d;
     return { ...d, considerant: text };
   });
 }
 
-/** Index distant si disponible, sinon (ou en plus) l'index embarqué. */
-export async function loadConsiderantIndex(): Promise<Record<string, string>> {
+/** Index embarqué — synchrone, pour afficher les fiches sans attendre le réseau. */
+export function loadConsiderantIndex(): Record<string, string> {
+  return bundledConsiderantIndex();
+}
+
+/** Fusionne l'index publié s'il est plus complet. Ne bloque pas l'UI. */
+export async function refreshConsiderantIndex(): Promise<Record<string, string>> {
   const fallback = bundledConsiderantIndex();
   try {
-    const res = await fetch(CONSIDERANTS_ENDPOINT);
-    if (!res.ok) return fallback;
-    const json = (await res.json()) as ConsiderantFile;
+    const json = await fetchJsonCached<ConsiderantFile>(CONSIDERANTS_ENDPOINT);
     const remote = json?.bySlug;
     if (remote && typeof remote === "object" && Object.keys(remote).length) {
       return { ...fallback, ...remote };

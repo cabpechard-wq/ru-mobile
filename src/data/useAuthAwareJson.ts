@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthContext";
+import { fetchJsonCached, peekJsonCache, putJsonCache } from "./jsonCache";
 import { parseWorkerPayload } from "./memberPack";
 
 export type RemoteJsonState<T> =
@@ -94,54 +95,91 @@ export function useAuthAwareJson<T>(
 ): RemoteJsonState<T> & { reload: () => void } {
   const auth = useAuth();
   const [state, setState] = useState<RemoteJsonState<T>>({ status: "loading" });
+  const readyRef = useRef(false);
+  const genRef = useRef(0);
 
-  const load = useCallback(() => {
-    if (auth.status === "checking") return;
-    setState({ status: "loading" });
+  const load = useCallback(
+    (force = false) => {
+      if (auth.status === "checking") return;
 
-    const isMember = auth.status === "authenticated";
-    if (!isMember && fallback != null && !demoUrl) {
-      setState({ status: "ready", json: fallback, source: "demo" });
-      return;
-    }
+      const isMember = auth.status === "authenticated";
+      if (!isMember && fallback != null && !demoUrl) {
+        readyRef.current = true;
+        setState({ status: "ready", json: fallback, source: "demo" });
+        return;
+      }
 
-    const url = isMember ? memberUrl : demoUrl;
-    const token = isMember && requiresAuthHeader ? auth.token : undefined;
-    const urls = isMember ? memberUrls(url) : [url];
+      const url = isMember ? memberUrl : demoUrl;
+      const cacheKey = url || demoUrl || memberUrl;
+      const token =
+        isMember && requiresAuthHeader && auth.status === "authenticated"
+          ? auth.token
+          : undefined;
+      const urls = isMember ? memberUrls(url) : [url];
+      const publicJson = !requiresAuthHeader;
+      const gen = ++genRef.current;
 
-    fetchFirstOk<T>(urls, token)
-      .then((json) =>
-        setState({
-          status: "ready",
-          json,
-          source: isMember ? "member" : "demo",
-        }),
-      )
-      .catch((err: unknown) => {
-        if (
-          isMember &&
-          err instanceof Error &&
-          (err as Error & { code?: string }).code === "unauthorized"
-        ) {
-          auth.logout();
-          return;
+      void (async () => {
+        if (!force && cacheKey) {
+          const cached = await peekJsonCache<T>(cacheKey);
+          if (gen !== genRef.current) return;
+          if (cached != null) {
+            readyRef.current = true;
+            setState({
+              status: "ready",
+              json: cached,
+              source: isMember ? "member" : "demo",
+            });
+          } else if (!readyRef.current) {
+            setState({ status: "loading" });
+          }
+        } else if (!readyRef.current || force) {
+          setState({ status: "loading" });
         }
-        if (!isMember && fallback != null) {
-          setState({ status: "ready", json: fallback, source: "demo" });
-          return;
+
+        try {
+          const json = publicJson
+            ? await fetchJsonCached<T>(url, { force })
+            : await fetchFirstOk<T>(urls, token);
+          if (gen !== genRef.current) return;
+          if (!publicJson) putJsonCache(cacheKey, json);
+          readyRef.current = true;
+          setState({
+            status: "ready",
+            json,
+            source: isMember ? "member" : "demo",
+          });
+        } catch (err: unknown) {
+          if (gen !== genRef.current) return;
+          if (
+            isMember &&
+            err instanceof Error &&
+            (err as Error & { code?: string }).code === "unauthorized"
+          ) {
+            auth.logout();
+            return;
+          }
+          if (readyRef.current) return;
+          if (!isMember && fallback != null) {
+            readyRef.current = true;
+            setState({ status: "ready", json: fallback, source: "demo" });
+            return;
+          }
+          const raw = err instanceof Error ? err.message : "";
+          const message = /failed to fetch|network/i.test(raw)
+            ? "Impossible de joindre le serveur."
+            : raw || "Une erreur est survenue.";
+          setState({ status: "error", message });
         }
-        const raw = err instanceof Error ? err.message : "";
-        const message = /failed to fetch|network/i.test(raw)
-          ? "Impossible de joindre le serveur."
-          : raw || "Une erreur est survenue.";
-        setState({ status: "error", message });
-      });
+      })();
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auth.status, demoUrl, memberUrl, requiresAuthHeader, fallback]);
+    [auth.status, demoUrl, memberUrl, requiresAuthHeader, fallback],
+  );
 
   useEffect(() => {
-    load();
+    load(false);
   }, [load]);
 
-  return { ...state, reload: load };
+  return { ...state, reload: () => load(true) };
 }

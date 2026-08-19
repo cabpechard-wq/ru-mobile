@@ -3,6 +3,7 @@ import {
   CHRONOLOGIE_META_ENDPOINT,
   DICTIONNAIRE_META_ENDPOINT,
 } from "./config";
+import { fetchJsonCached } from "./jsonCache";
 
 /** Totaux du site (`chronology-meta.json` / `entries-meta.json`). */
 export const FALLBACK_JURISPRUDENCE = 993;
@@ -23,9 +24,7 @@ let inflight: Promise<FondsMeta> | null = null;
 
 async function readCount(url: string, fallback: number): Promise<number> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return fallback;
-    const json = (await res.json()) as { count?: number };
+    const json = await fetchJsonCached<{ count?: number }>(url);
     const n = Number(json.count);
     return Number.isFinite(n) && n > 0 ? n : fallback;
   } catch {

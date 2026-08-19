@@ -24,8 +24,8 @@ export default function RootLayout() {
           <FlipcardsDicoProvider>
             <RelierProvider>
               <RelierDicoProvider>
-                <EnchainementsProvider>
-                  <ChronologieProvider>
+                <ChronologieProvider>
+                  <EnchainementsProvider>
                     <DictionnaireProvider>
                       <ManuelProvider>
                         <StudyProvider>
@@ -44,8 +44,8 @@ export default function RootLayout() {
                         </StudyProvider>
                       </ManuelProvider>
                     </DictionnaireProvider>
-                  </ChronologieProvider>
-                </EnchainementsProvider>
+                  </EnchainementsProvider>
+                </ChronologieProvider>
               </RelierDicoProvider>
             </RelierProvider>
           </FlipcardsDicoProvider>

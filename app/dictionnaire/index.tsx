@@ -226,20 +226,21 @@ export default function DictionnaireScreen() {
               key={`${g.letter}-${query ? "search" : "browse"}-${theme || "all"}-${letter || "all"}`}
               title={`${g.letter} (${g.items.length})`}
               initiallyOpen={!!query.trim() || letter === g.letter}
-            >
-              <View style={styles.groupList}>
-                {g.items.map((e) => (
-                  <EntryRow
-                    key={e.id}
-                    entry={e}
-                    knownDecisionIds={knownDecisionIds}
-                    knownChapterIds={knownChapterIds}
-                    onOpenDecision={(id) => router.push(`/chronologie/${id}`)}
-                    onOpenChapter={(id) => router.push(`/manuel/${id}`)}
-                  />
-                ))}
-              </View>
-            </Accordion>
+              renderBody={() => (
+                <View style={styles.groupList}>
+                  {g.items.map((e) => (
+                    <EntryRow
+                      key={e.id}
+                      entry={e}
+                      knownDecisionIds={knownDecisionIds}
+                      knownChapterIds={knownChapterIds}
+                      onOpenDecision={(id) => router.push(`/chronologie/${id}`)}
+                      onOpenChapter={(id) => router.push(`/manuel/${id}`)}
+                    />
+                  ))}
+                </View>
+              )}
+            />
           ))}
 
           {!visibleGroups.length ? (
