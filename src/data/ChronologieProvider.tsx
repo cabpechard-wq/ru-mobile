@@ -15,9 +15,11 @@ import {
 import {
   applyConsiderantsToDecisions,
   loadConsiderantIndex,
+  refreshConsiderantIndex,
 } from "./considerant";
 import { type ChronologyData, type Decision } from "./decisions";
 import type { Card } from "./cards";
+import { fetchJsonCached, peekJsonCache } from "./jsonCache";
 
 type ChronologieState =
   | { status: "loading" }
@@ -31,12 +33,6 @@ type ChronologieContextValue = ChronologieState & {
 };
 
 const ChronologieContext = createContext<ChronologieContextValue | null>(null);
-
-async function fetchJson(url: string): Promise<ChronologyData> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Serveur indisponible (${res.status})`);
-  return (await res.json()) as ChronologyData;
-}
 
 function errorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : "";
@@ -66,101 +62,112 @@ export function ChronologieProvider({ children }: { children: React.ReactNode })
 
   const rawRef = useRef<Decision[]>([]);
   const sourceRef = useRef<"demo" | "full">("demo");
-  const indexRef = useRef<Record<string, string>>({});
+  const indexRef = useRef<Record<string, string>>(loadConsiderantIndex());
   const rememberedRef = useRef<Record<string, string>>({});
+  const genRef = useRef(0);
 
   const cardList = cards.status === "ready" ? cards.data.allCards : undefined;
   const cardsRef = useRef<Card[] | undefined>(undefined);
   cardsRef.current = cardList;
 
-  const loadDemo = useCallback(() => {
-    setState({ status: "loading" });
-    Promise.all([fetchJson(DEMO_CHRONOLOGIE_ENDPOINT), loadConsiderantIndex()])
-      .then(([json, index]) => {
-        indexRef.current = index;
-        rawRef.current = json.decisions || [];
-        sourceRef.current = "demo";
-        setState(
-          hydrate(
-            rawRef.current,
-            "demo",
-            index,
-            rememberedRef.current,
-            cardsRef.current,
-          ),
-        );
-      })
-      .catch((err: unknown) => {
-        setState({ status: "error", message: errorMessage(err) });
-      });
-  }, []);
-
-  const loadFull = useCallback(() => {
-    setState({ status: "loading" });
-    Promise.all([fetchJson(FULL_CHRONOLOGIE_ENDPOINT), loadConsiderantIndex()])
-      .then(([json, index]) => {
-        indexRef.current = index;
-        rawRef.current = json.decisions || [];
-        sourceRef.current = "full";
-        setState(
-          hydrate(
-            rawRef.current,
-            "full",
-            index,
-            rememberedRef.current,
-            cardsRef.current,
-          ),
-        );
-      })
-      .catch((err: unknown) => {
-        setState({ status: "error", message: errorMessage(err) });
-      });
-  }, []);
-
-  useEffect(() => {
-    if (auth.status === "checking") return;
-    if (auth.status === "authenticated") {
-      loadFull();
-    } else {
-      loadDemo();
-    }
-  }, [auth.status, loadDemo, loadFull]);
-
-  useEffect(() => {
+  const applyReady = useCallback(() => {
     if (!rawRef.current.length) return;
-    setState((prev) => {
-      if (prev.status !== "ready") return prev;
-      return hydrate(
-        rawRef.current,
-        sourceRef.current,
-        indexRef.current,
-        rememberedRef.current,
-        cardList,
-      );
-    });
-  }, [cardList]);
-
-  const reload = useCallback(() => {
-    if (auth.status === "authenticated") loadFull();
-    else loadDemo();
-  }, [auth.status, loadFull, loadDemo]);
-
-  const rememberConsiderant = useCallback((key: string, text: string) => {
-    const trimmed = (text || "").trim();
-    if (!key || !trimmed) return;
-    rememberedRef.current = { ...rememberedRef.current, [key]: trimmed };
-    if (!rawRef.current.length) return;
-    setState((prev) => {
-      if (prev.status !== "ready") return prev;
-      return hydrate(
+    setState(
+      hydrate(
         rawRef.current,
         sourceRef.current,
         indexRef.current,
         rememberedRef.current,
         cardsRef.current,
-      );
-    });
+      ),
+    );
   }, []);
+
+  const load = useCallback(
+    async (url: string, source: "demo" | "full", force: boolean) => {
+      const gen = ++genRef.current;
+      indexRef.current = { ...loadConsiderantIndex(), ...indexRef.current };
+
+      if (!force) {
+        const cached = await peekJsonCache<ChronologyData>(url);
+        if (gen !== genRef.current) return;
+        if (cached?.decisions?.length) {
+          rawRef.current = cached.decisions;
+          sourceRef.current = source;
+          applyReady();
+        } else if (!rawRef.current.length) {
+          setState({ status: "loading" });
+        }
+      } else {
+        setState({ status: "loading" });
+      }
+
+      try {
+        const json = await fetchJsonCached<ChronologyData>(url, { force });
+        if (gen !== genRef.current) return;
+        rawRef.current = json.decisions || [];
+        sourceRef.current = source;
+        applyReady();
+      } catch (err: unknown) {
+        if (gen !== genRef.current) return;
+        if (rawRef.current.length) {
+          applyReady();
+          return;
+        }
+        setState({ status: "error", message: errorMessage(err) });
+        return;
+      }
+
+      refreshConsiderantIndex().then((index) => {
+        if (gen !== genRef.current) return;
+        indexRef.current = index;
+        applyReady();
+      });
+    },
+    [applyReady],
+  );
+
+  const loadDemo = useCallback(
+    () => load(DEMO_CHRONOLOGIE_ENDPOINT, "demo", false),
+    [load],
+  );
+  const loadFull = useCallback(
+    () => load(FULL_CHRONOLOGIE_ENDPOINT, "full", false),
+    [load],
+  );
+
+  useEffect(() => {
+    if (auth.status === "checking") return;
+    if (auth.status === "authenticated") {
+      void loadFull();
+    } else {
+      void loadDemo();
+    }
+  }, [auth.status, loadDemo, loadFull]);
+
+  useEffect(() => {
+    if (!rawRef.current.length) return;
+    applyReady();
+  }, [cardList, applyReady]);
+
+  const reload = useCallback(() => {
+    const url =
+      auth.status === "authenticated"
+        ? FULL_CHRONOLOGIE_ENDPOINT
+        : DEMO_CHRONOLOGIE_ENDPOINT;
+    const source = auth.status === "authenticated" ? "full" : "demo";
+    void load(url, source, true);
+  }, [auth.status, load]);
+
+  const rememberConsiderant = useCallback(
+    (key: string, text: string) => {
+      const trimmed = (text || "").trim();
+      if (!key || !trimmed) return;
+      rememberedRef.current = { ...rememberedRef.current, [key]: trimmed };
+      applyReady();
+    },
+    [applyReady],
+  );
 
   return (
     <ChronologieContext.Provider

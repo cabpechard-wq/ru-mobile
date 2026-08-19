@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   LayoutAnimation,
   Platform,
@@ -20,7 +20,9 @@ if (
 type Props = {
   title: string;
   onClear?: () => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  /** Évite de construire tout le corps (centaines d'entrées) tant que fermé. */
+  renderBody?: () => React.ReactNode;
   initiallyOpen?: boolean;
 };
 
@@ -28,15 +30,21 @@ export function Accordion({
   title,
   onClear,
   children,
+  renderBody,
   initiallyOpen = false,
 }: Props) {
   const [open, setOpen] = useState(initiallyOpen);
+  const mounted = useRef(false);
 
   useEffect(() => {
     setOpen(initiallyOpen);
   }, [initiallyOpen]);
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [open]);
 
@@ -58,7 +66,9 @@ export function Accordion({
           </Pressable>
         ) : null}
       </View>
-      {open ? <View style={styles.body}>{children}</View> : null}
+      {open ? (
+        <View style={styles.body}>{renderBody ? renderBody() : children}</View>
+      ) : null}
     </View>
   );
 }

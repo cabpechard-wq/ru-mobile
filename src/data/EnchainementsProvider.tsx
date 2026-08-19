@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { type ChronologyData, type Decision } from "./enchainements";
-import { DEMO_ENCHAINEMENTS_ENDPOINT, MEMBER_ENCHAINEMENTS_ENDPOINT } from "./config";
-import { useAuthAwareJson } from "./useAuthAwareJson";
+import { type Decision } from "./enchainements";
+import { useChronologieData } from "./ChronologieProvider";
 
 type EnchainementsState =
   | { status: "loading" }
@@ -12,24 +11,27 @@ type EnchainementsContextValue = EnchainementsState & { reload: () => void };
 
 const EnchainementsContext = createContext<EnchainementsContextValue | null>(null);
 
+/**
+ * Même fonds que la Chronologie (`chronology-decisions.json`). Un second
+ * fetch doublait ~3,3 Mo en mode connecté.
+ */
 export function EnchainementsProvider({ children }: { children: React.ReactNode }) {
-  const remote = useAuthAwareJson<ChronologyData>(
-    DEMO_ENCHAINEMENTS_ENDPOINT,
-    MEMBER_ENCHAINEMENTS_ENDPOINT,
-    false // JSON statique public, pas un endpoint Worker : pas de Bearer
-  );
+  const chrono = useChronologieData();
 
   const value = useMemo<EnchainementsContextValue>(() => {
-    if (remote.status === "ready") {
+    if (chrono.status === "ready") {
       return {
         status: "ready",
-        decisions: remote.json.decisions || [],
-        source: remote.source,
-        reload: remote.reload,
+        decisions: chrono.decisions,
+        source: chrono.source === "full" ? "member" : "demo",
+        reload: chrono.reload,
       };
     }
-    return { ...remote, reload: remote.reload };
-  }, [remote]);
+    if (chrono.status === "error") {
+      return { status: "error", message: chrono.message, reload: chrono.reload };
+    }
+    return { status: "loading", reload: chrono.reload };
+  }, [chrono]);
 
   return (
     <EnchainementsContext.Provider value={value}>
